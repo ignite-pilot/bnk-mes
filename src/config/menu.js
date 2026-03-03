@@ -1,0 +1,54 @@
+export const menuConfig = [
+  {
+    id: 'material',
+    label: '원자재 관리',
+    path: '/material',
+    children: [
+      { id: 'material-info', label: '원자재 정보', path: '/material/info' },
+      { id: 'material-supplier', label: '원자재 공급 업체', path: '/material/supplier' },
+      { id: 'material-warehouse', label: '원자재 업체 창고 정보', path: '/material/warehouse' },
+      { id: 'material-stock', label: '원자재 재고 관리', path: '/material/stock' },
+      { id: 'material-inbound', label: '원자재 입고 요청/입고 관리', path: '/material/inbound' },
+      { id: 'material-order', label: '원자재 발주 요청 관리 (계획 포함)', path: '/material/order' },
+    ],
+  },
+  {
+    id: 'delivery',
+    label: '납품 관리',
+    path: '/delivery',
+    children: [
+      { id: 'delivery-vehicle', label: '완성차 정보', path: '/delivery/vehicle' },
+      { id: 'delivery-supplier', label: '납품사 정보', path: '/delivery/supplier' },
+      { id: 'delivery-partner', label: '납품사 연계 업체 정보', path: '/delivery/partner' },
+      { id: 'delivery-warehouse', label: '납품사 창고 정보', path: '/delivery/warehouse' },
+      { id: 'delivery-product', label: '완제품 정보', path: '/delivery/product' },
+      { id: 'delivery-semi', label: '반제품 정보', path: '/delivery/semi' },
+      { id: 'delivery-stock', label: '납품사 재고 관리', path: '/delivery/stock' },
+      { id: 'delivery-inbound', label: '완제품 입고요청/납품 관리', path: '/delivery/inbound' },
+    ],
+  },
+  {
+    id: 'production',
+    label: '생산 관리',
+    path: '/production',
+    children: [
+      { id: 'production-factory', label: '생산 공장 정보', path: '/production/factory' },
+      { id: 'production-plan-3m', label: '3개월 주문 계획 관리', path: '/production/plan-3m' },
+      { id: 'production-plan-1w', label: '1주 주문 관리', path: '/production/plan-1w' },
+      { id: 'production-daily', label: '일별 생산 계획/실적 관리', path: '/production/daily' },
+      { id: 'production-process', label: '공정별 생산 계획/실적 관리', path: '/production/process' },
+      { id: 'production-material', label: '원자재 사용 관리', path: '/production/material' },
+      { id: 'production-quality', label: '품질 관리', path: '/production/quality' },
+    ],
+  },
+  {
+    id: 'inventory',
+    label: '재고 관리',
+    path: '/inventory',
+    children: [
+      { id: 'inventory-warehouse', label: '비엔케이 재고 창고 정보', path: '/inventory/warehouse' },
+      { id: 'inventory-product', label: '완제품 재고 관리', path: '/inventory/product' },
+      { id: 'inventory-semi', label: '반제품 재고 관리', path: '/inventory/semi' },
+    ],
+  },
+];
