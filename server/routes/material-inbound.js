@@ -4,7 +4,7 @@
  * - 삭제 플래그, 수정일자·수정자, 페이지네이션, 이메일 발송(ig-notification)
  */
 import { Router } from 'express';
-import pool from '../lib/db.js';
+import { getPool } from '../lib/db.js';
 import logger from '../lib/logger.js';
 import { toStartOfDayString, toEndOfDayString } from '../lib/dateUtils.js';
 import { sendInboundEmail } from '../lib/notification.js';
@@ -123,7 +123,7 @@ export async function exportExcel(req, res) {
         ORDER BY r.request_date DESC, r.id DESC, l.id
         LIMIT ?
       `;
-      const [rows] = await pool.query(sql, [...params, exportLimit]);
+      const [rows] = await getPool().query(sql, [...params, exportLimit]);
       const header = '입고 요청일,입고 희망일,원자재 업체,원자재 종류,원자재 명,수량,입고 상태\n';
       const body = (rows || [])
         .map(
@@ -179,7 +179,7 @@ export async function exportExcel(req, res) {
       ORDER BY r.request_date DESC, r.id DESC
       LIMIT ?
     `;
-    const [rows] = await pool.query(sql, [...paramsReq, exportLimit]);
+    const [rows] = await getPool().query(sql, [...paramsReq, exportLimit]);
     const toStatusLabel = (r) => {
       if (r.status === 'cancelled') return '입고 취소';
       if (r.status === 'received') return '전체 입고';
@@ -276,8 +276,8 @@ export async function listHandler(req, res) {
         INNER JOIN \`${LINES_TABLE}\` l ON l.request_id = r.id
         ${where}
       `;
-      const [rows] = await pool.query(listSql, [...params, limitNum, offset]);
-      const [[countRow]] = await pool.query(countSql, params);
+      const [rows] = await getPool().query(listSql, [...params, limitNum, offset]);
+      const [[countRow]] = await getPool().query(countSql, params);
       const total = countRow?.total != null ? Number(countRow.total) : 0;
       return res.json({ list: rows || [], total, page: Number(page), limit: limitNum });
     }
@@ -323,8 +323,8 @@ export async function listHandler(req, res) {
       LIMIT ? OFFSET ?
     `;
     const countSql = `SELECT COUNT(*) AS total FROM \`${REQUESTS_TABLE}\` r ${where}`;
-    const [rows] = await pool.query(listSql, [...params, limitNum, offset]);
-    const [[countRow]] = await pool.query(countSql, params);
+    const [rows] = await getPool().query(listSql, [...params, limitNum, offset]);
+    const [[countRow]] = await getPool().query(countSql, params);
     const total = countRow?.total != null ? Number(countRow.total) : 0;
     const list = (rows || []).map((row) => {
       const req = parseLineCount(row.line_request_count);
@@ -366,7 +366,7 @@ router.get('/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (Number.isNaN(id)) return res.status(400).json({ error: '잘못된 ID입니다.' });
-    const [reqRows] = await pool.query(
+    const [reqRows] = await getPool().query(
       `SELECT r.*, s.name AS supplier_name, s.manager_email
        FROM \`${REQUESTS_TABLE}\` r
        INNER JOIN \`${SUPPLIERS_TABLE}\` s ON s.id = r.supplier_id AND s.deleted = 'N'
@@ -374,7 +374,7 @@ router.get('/:id', async (req, res) => {
       [id]
     );
     if (!reqRows.length) return res.status(404).json({ error: '입고 요청을 찾을 수 없습니다.' });
-    const [lineRows] = await pool.query(
+    const [lineRows] = await getPool().query(
       `SELECT l.id, l.raw_material_id, l.quantity, l.status,
         rm.name AS raw_material_name, mt.name AS raw_material_kind
        FROM \`${LINES_TABLE}\` l
@@ -408,7 +408,7 @@ router.post('/', async (req, res) => {
 
     const sid = parseInt(supplierId, 10);
     if (Number.isNaN(sid) || sid < 1) return res.status(400).json({ error: '원자재 업체를 선택해 주세요.' });
-    const [sup] = await pool.query(
+    const [sup] = await getPool().query(
       `SELECT id, name, manager_email FROM \`${SUPPLIERS_TABLE}\` WHERE id = ? AND deleted = 'N'`,
       [sid]
     );
@@ -417,7 +417,7 @@ router.post('/', async (req, res) => {
     const requestDate = toDateString(new Date());
     const desiredDateStr = toDateString(new Date(desiredDate)) || String(desiredDate).trim().slice(0, 10);
 
-    const [insertReq] = await pool.query(
+    const [insertReq] = await getPool().query(
       `INSERT INTO \`${REQUESTS_TABLE}\` (supplier_id, desired_date, request_date, status, updated_by)
        VALUES (?, ?, ?, 'active', ?)`,
       [sid, desiredDateStr, requestDate, String(updatedBy).trim()]
@@ -428,17 +428,17 @@ router.post('/', async (req, res) => {
       parseInt(l.raw_material_id, 10),
       Number(l.quantity) || 0,
     ]);
-    await pool.query(
+    await getPool().query(
       `INSERT INTO \`${LINES_TABLE}\` (request_id, raw_material_id, quantity, status, updated_by) VALUES ?`,
       [lineRows.map((r) => [...r, 'request', String(updatedBy).trim()])]
     );
 
-    const [created] = await pool.query(
+    const [created] = await getPool().query(
       `SELECT r.*, s.name AS supplier_name FROM \`${REQUESTS_TABLE}\` r
        INNER JOIN \`${SUPPLIERS_TABLE}\` s ON s.id = r.supplier_id WHERE r.id = ?`,
       [requestId]
     );
-    const [createdLines] = await pool.query(
+    const [createdLines] = await getPool().query(
       `SELECT l.*, rm.name AS raw_material_name, mt.name AS raw_material_kind
        FROM \`${LINES_TABLE}\` l
        INNER JOIN \`${RAW_MATERIALS_TABLE}\` rm ON rm.id = l.raw_material_id
@@ -488,7 +488,7 @@ router.patch('/:id', async (req, res) => {
     if (!action || !['cancel', 'receive-all', 'return-all'].includes(action)) {
       return res.status(400).json({ error: 'action은 cancel, receive-all, return-all 중 하나여야 합니다.' });
     }
-    const [reqRows] = await pool.query(
+    const [reqRows] = await getPool().query(
       `SELECT r.*, s.name AS supplier_name, s.manager_email FROM \`${REQUESTS_TABLE}\` r
        INNER JOIN \`${SUPPLIERS_TABLE}\` s ON s.id = r.supplier_id AND s.deleted = 'N'
        WHERE r.id = ? AND r.deleted = 'N'`,
@@ -496,12 +496,12 @@ router.patch('/:id', async (req, res) => {
     );
     if (!reqRows.length) return res.status(404).json({ error: '입고 요청을 찾을 수 없습니다.' });
     const request = reqRows[0];
-    const [lines] = await pool.query(`SELECT id, raw_material_id, quantity, status FROM \`${LINES_TABLE}\` WHERE request_id = ?`, [id]);
+    const [lines] = await getPool().query(`SELECT id, raw_material_id, quantity, status FROM \`${LINES_TABLE}\` WHERE request_id = ?`, [id]);
 
     if (action === 'cancel') {
       const allRequest = lines.every((l) => l.status === 'request');
       if (!allRequest) return res.status(400).json({ error: '모든 원자재가 요청 상태일 때만 취소할 수 있습니다.' });
-      await pool.query(
+      await getPool().query(
         `UPDATE \`${REQUESTS_TABLE}\` SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP, updated_by = ? WHERE id = ?`,
         [updatedBy != null ? String(updatedBy) : null, id]
       );
@@ -513,11 +513,11 @@ router.patch('/:id', async (req, res) => {
         );
       }
     } else if (action === 'receive-all') {
-      await pool.query(
+      await getPool().query(
         `UPDATE \`${LINES_TABLE}\` SET status = 'received', updated_at = CURRENT_TIMESTAMP, updated_by = ? WHERE request_id = ?`,
         [updatedBy != null ? String(updatedBy) : null, id]
       );
-      await pool.query(
+      await getPool().query(
         `UPDATE \`${REQUESTS_TABLE}\` SET status = 'received', updated_at = CURRENT_TIMESTAMP, updated_by = ? WHERE id = ?`,
         [updatedBy != null ? String(updatedBy) : null, id]
       );
@@ -529,11 +529,11 @@ router.patch('/:id', async (req, res) => {
         );
       }
     } else if (action === 'return-all') {
-      await pool.query(
+      await getPool().query(
         `UPDATE \`${LINES_TABLE}\` SET status = 'returned', updated_at = CURRENT_TIMESTAMP, updated_by = ? WHERE request_id = ?`,
         [updatedBy != null ? String(updatedBy) : null, id]
       );
-      await pool.query(
+      await getPool().query(
         `UPDATE \`${REQUESTS_TABLE}\` SET status = 'returned', updated_at = CURRENT_TIMESTAMP, updated_by = ? WHERE id = ?`,
         [updatedBy != null ? String(updatedBy) : null, id]
       );
@@ -548,12 +548,12 @@ router.patch('/:id', async (req, res) => {
       return res.status(400).json({ error: 'action은 cancel, receive-all, return-all 중 하나여야 합니다.' });
     }
 
-    const [updated] = await pool.query(
+    const [updated] = await getPool().query(
       `SELECT r.*, s.name AS supplier_name FROM \`${REQUESTS_TABLE}\` r
        INNER JOIN \`${SUPPLIERS_TABLE}\` s ON s.id = r.supplier_id WHERE r.id = ?`,
       [id]
     );
-    const [updatedLines] = await pool.query(
+    const [updatedLines] = await getPool().query(
       `SELECT l.*, rm.name AS raw_material_name, mt.name AS raw_material_kind
        FROM \`${LINES_TABLE}\` l
        INNER JOIN \`${RAW_MATERIALS_TABLE}\` rm ON rm.id = l.raw_material_id
@@ -578,7 +578,7 @@ router.patch('/:requestId/lines/:lineId', async (req, res) => {
     if (status !== 'received' && status !== 'returned') {
       return res.status(400).json({ error: 'status는 received 또는 returned이어야 합니다.' });
     }
-    const [lineRows] = await pool.query(
+    const [lineRows] = await getPool().query(
       `SELECT l.*, r.supplier_id, s.name AS supplier_name, s.manager_email, rm.name AS raw_material_name
        FROM \`${LINES_TABLE}\` l
        INNER JOIN \`${REQUESTS_TABLE}\` r ON r.id = l.request_id AND r.deleted = 'N'
@@ -588,11 +588,11 @@ router.patch('/:requestId/lines/:lineId', async (req, res) => {
       [lineId, requestId]
     );
     if (!lineRows.length) return res.status(404).json({ error: '해당 라인을 찾을 수 없습니다.' });
-    await pool.query(
+    await getPool().query(
       `UPDATE \`${LINES_TABLE}\` SET status = ?, updated_at = CURRENT_TIMESTAMP, updated_by = ? WHERE id = ? AND request_id = ?`,
       [status, updatedBy != null ? String(updatedBy) : null, lineId, requestId]
     );
-    const [allLines] = await pool.query(
+    const [allLines] = await getPool().query(
       `SELECT status FROM \`${LINES_TABLE}\` WHERE request_id = ?`,
       [requestId]
     );
@@ -602,7 +602,7 @@ router.patch('/:requestId/lines/:lineId', async (req, res) => {
     let requestStatus = 'active';
     if (total > 0 && receivedCount === total) requestStatus = 'received';
     else if (total > 0 && returnedCount === total) requestStatus = 'returned';
-    await pool.query(
+    await getPool().query(
       `UPDATE \`${REQUESTS_TABLE}\` SET status = ?, updated_at = CURRENT_TIMESTAMP, updated_by = ? WHERE id = ?`,
       [requestStatus, updatedBy != null ? String(updatedBy) : null, requestId]
     );
@@ -615,7 +615,7 @@ router.patch('/:requestId/lines/:lineId', async (req, res) => {
         `원자재 "${line.raw_material_name}"에 대해 ${actionText}되었습니다.\n업체: ${line.supplier_name}`
       );
     }
-    const [updated] = await pool.query(
+    const [updated] = await getPool().query(
       `SELECT l.*, rm.name AS raw_material_name, mt.name AS raw_material_kind
        FROM \`${LINES_TABLE}\` l
        INNER JOIN \`${RAW_MATERIALS_TABLE}\` rm ON rm.id = l.raw_material_id

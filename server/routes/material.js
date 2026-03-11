@@ -3,7 +3,7 @@
  * - 원자재 종류(material_types) 연동, 목록(검색), 단건 조회, 등록, 수정, 삭제(플래그), 엑셀 다운로드
  */
 import { Router } from 'express';
-import pool from '../lib/db.js';
+import { getPool } from '../lib/db.js';
 import logger from '../lib/logger.js';
 import { toStartOfDayString, toEndOfDayString } from '../lib/dateUtils.js';
 
@@ -26,7 +26,7 @@ const LIST_SELECT = `SELECT rm.id, rm.kind_id, mt.name AS kind, rm.name, rm.colo
 
 router.get('/types', async (req, res) => {
   try {
-    const [rows] = await pool.query(`SELECT id, name, sort_order FROM \`${TYPES_TABLE}\` ORDER BY sort_order ASC, id ASC`);
+    const [rows] = await getPool().query(`SELECT id, name, sort_order FROM \`${TYPES_TABLE}\` ORDER BY sort_order ASC, id ASC`);
     res.json({ list: rows || [] });
   } catch (err) {
     logger.error('material types error', { error: err.message });
@@ -53,7 +53,7 @@ router.get('/export-excel', async (req, res) => {
       params.push(`%${String(name).trim()}%`);
     }
 
-    const [rows] = await pool.query(
+    const [rows] = await getPool().query(
       `${LIST_SELECT} ${where} ORDER BY rm.id DESC`,
       params
     );
@@ -116,11 +116,11 @@ router.get('/', async (req, res) => {
       params.push(`%${String(name).trim()}%`);
     }
 
-    const [rows] = await pool.query(
+    const [rows] = await getPool().query(
       `${LIST_SELECT} ${where} ORDER BY rm.id DESC LIMIT ? OFFSET ?`,
       [...params, limitNum, offset]
     );
-    const [[{ total }]] = await pool.query(
+    const [[{ total }]] = await getPool().query(
       `SELECT COUNT(*) AS total FROM \`${TABLE}\` rm ${where}`,
       params
     );
@@ -138,7 +138,7 @@ router.get('/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (Number.isNaN(id)) return res.status(400).json({ error: '잘못된 ID입니다.' });
-    const [rows] = await pool.query(
+    const [rows] = await getPool().query(
       `${LIST_SELECT} WHERE rm.id = ? AND rm.deleted = ?`,
       [id, 'N']
     );
@@ -175,13 +175,13 @@ router.post('/', async (req, res) => {
     }
 
     const nameTrimmed = String(name).trim();
-    const [dup] = await pool.query(
+    const [dup] = await getPool().query(
       `SELECT id FROM \`${TABLE}\` WHERE name = ? AND deleted = 'N'`,
       [nameTrimmed]
     );
     if (dup.length) return res.status(409).json({ error: '이미 사용 중인 원자재 이름입니다.' });
 
-    const [result] = await pool.query(
+    const [result] = await getPool().query(
       `INSERT INTO \`${TABLE}\` (kind_id, name, color, thickness, width, \`length\`, supplier_safety_stock, bnk_warehouse_safety_stock, created_by, updated_by)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
@@ -197,7 +197,7 @@ router.post('/', async (req, res) => {
         String(createdBy).trim(),
       ]
     );
-    const [rows] = await pool.query(`${LIST_SELECT} WHERE rm.id = ?`, [result.insertId]);
+    const [rows] = await getPool().query(`${LIST_SELECT} WHERE rm.id = ?`, [result.insertId]);
     res.status(201).json(rows[0]);
   } catch (err) {
     logger.error('material create error', { error: err.message });
@@ -211,7 +211,7 @@ router.patch('/:id', async (req, res) => {
     if (Number.isNaN(id)) return res.status(400).json({ error: '잘못된 ID입니다.' });
     const { name, supplier_safety_stock, bnk_warehouse_safety_stock, updatedBy } = req.body || {};
 
-    const [existing] = await pool.query(
+    const [existing] = await getPool().query(
       `SELECT id FROM \`${TABLE}\` WHERE id = ? AND deleted = ?`,
       [id, 'N']
     );
@@ -221,7 +221,7 @@ router.patch('/:id', async (req, res) => {
     const params = [];
     if (name !== undefined) {
       if (String(name).trim() === '') return res.status(400).json({ error: '원자재 이름은 필수입니다.' });
-      const [dup] = await pool.query(
+      const [dup] = await getPool().query(
         `SELECT id FROM \`${TABLE}\` WHERE name = ? AND deleted = 'N' AND id != ?`,
         [String(name).trim(), id]
       );
@@ -244,11 +244,11 @@ router.patch('/:id', async (req, res) => {
     if (updates.length === 0) return res.status(400).json({ error: '수정할 항목이 없습니다.' });
 
     params.push(id);
-    await pool.query(
+    await getPool().query(
       `UPDATE \`${TABLE}\` SET ${updates.join(', ')} WHERE id = ? AND deleted = ?`,
       [...params, 'N']
     );
-    const [rows] = await pool.query(`${LIST_SELECT} WHERE rm.id = ?`, [id]);
+    const [rows] = await getPool().query(`${LIST_SELECT} WHERE rm.id = ?`, [id]);
     res.json(rows[0]);
   } catch (err) {
     logger.error('material update error', { error: err.message });
@@ -261,7 +261,7 @@ router.delete('/:id', async (req, res) => {
     const id = parseInt(req.params.id, 10);
     if (Number.isNaN(id)) return res.status(400).json({ error: '잘못된 ID입니다.' });
     const updatedBy = req.body?.updatedBy != null ? String(req.body.updatedBy).trim() : null;
-    const [result] = await pool.query(
+    const [result] = await getPool().query(
       `UPDATE \`${TABLE}\` SET deleted = 'Y', updated_at = CURRENT_TIMESTAMP, updated_by = ? WHERE id = ? AND deleted = 'N'`,
       [updatedBy, id]
     );

@@ -5,16 +5,19 @@ import { jest } from '@jest/globals';
 import request from 'supertest';
 
 const mockQuery = jest.fn();
+const mockPool = {
+  query: mockQuery,
+  getConnection: jest.fn(() =>
+    Promise.resolve({
+      query: mockQuery,
+      release: jest.fn(),
+    })
+  ),
+};
 jest.unstable_mockModule('../lib/db.js', () => ({
-  default: {
-    query: mockQuery,
-    getConnection: jest.fn(() =>
-      Promise.resolve({
-        query: mockQuery,
-        release: jest.fn(),
-      })
-    ),
-  },
+  initDb: jest.fn(() => Promise.resolve()),
+  getPool: jest.fn(() => mockPool),
+  default: { initDb: jest.fn(() => Promise.resolve()), getPool: jest.fn(() => mockPool) },
 }));
 
 const { default: app } = await import('../index.js');

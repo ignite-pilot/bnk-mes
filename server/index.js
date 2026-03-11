@@ -4,6 +4,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { initDb } from './lib/db.js';
 import healthRouter from './routes/health.js';
 import memberRouter from './routes/member.js';
 import materialRouter from './routes/material.js';
@@ -47,9 +48,12 @@ app.use((err, req, res, next) => {
 });
 
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
-    logger.info(`Server running on port ${PORT}`);
-  });
+  (async () => {
+    await initDb();
+    app.listen(PORT, () => {
+      logger.info(`Server running on port ${PORT}`);
+    });
+  })();
 }
 
 export default app;

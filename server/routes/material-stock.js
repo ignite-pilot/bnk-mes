@@ -4,7 +4,7 @@
  * - 위험도: 부족(red), 확보필요(orange), 안전(green), 일부과잉(lightbrown), 과잉위험(darkbrown)
  */
 import { Router } from 'express';
-import pool from '../lib/db.js';
+import { getPool } from '../lib/db.js';
 import logger from '../lib/logger.js';
 import { toStartOfDayString, toEndOfDayString } from '../lib/dateUtils.js';
 
@@ -46,7 +46,7 @@ function applyRiskToList(rows) {
 
 router.get('/bnk-warehouses', async (req, res) => {
   try {
-    const [rows] = await pool.query(
+    const [rows] = await getPool().query(
       `SELECT id, name FROM \`${BNK_WAREHOUSES_TABLE}\` WHERE deleted = 'N' ORDER BY name`,
       []
     );
@@ -106,7 +106,7 @@ router.get('/export-excel', async (req, res) => {
       ${where}
       ORDER BY ss.stock_date DESC, ss.id DESC, sl.raw_material_id
     `;
-    const [rows] = await pool.query(sql, params);
+    const [rows] = await getPool().query(sql, params);
     const withRisk = applyRiskToList(rows);
 
     const BOM = '\uFEFF';
@@ -203,8 +203,8 @@ router.get('/', async (req, res) => {
       LEFT JOIN \`${BNK_WAREHOUSES_TABLE}\` bw ON bw.id = ss.bnk_warehouse_id AND bw.deleted = 'N'
       ${where}
     `;
-    const [rows] = await pool.query(listSql, [...params, limitNum, offset]);
-    const [countRows] = await pool.query(countSql, params);
+    const [rows] = await getPool().query(listSql, [...params, limitNum, offset]);
+    const [countRows] = await getPool().query(countSql, params);
     const total = (countRows && countRows[0] && countRows[0].total) != null ? Number(countRows[0].total) : 0;
     const withRisk = applyRiskToList(rows);
     res.json({ list: withRisk, total, page: Number(page), limit: limitNum });
@@ -222,7 +222,7 @@ router.get('/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (Number.isNaN(id)) return res.status(400).json({ error: '잘못된 ID입니다.' });
-    const [snap] = await pool.query(
+    const [snap] = await getPool().query(
       `SELECT ss.*, sw.name AS supplier_warehouse_name, sup.name AS supplier_name, sup.id AS supplier_id,
         bw.name AS bnk_warehouse_name
        FROM \`${SNAPSHOTS_TABLE}\` ss
@@ -233,7 +233,7 @@ router.get('/:id', async (req, res) => {
       [id]
     );
     if (!snap.length) return res.status(404).json({ error: '재고 데이터를 찾을 수 없습니다.' });
-    const [lines] = await pool.query(
+    const [lines] = await getPool().query(
       `SELECT sl.raw_material_id, sl.quantity, rm.name AS raw_material_name, mt.name AS raw_material_kind
        FROM \`${LINES_TABLE}\` sl
        INNER JOIN \`${RAW_MATERIALS_TABLE}\` rm ON rm.id = sl.raw_material_id
@@ -261,7 +261,7 @@ router.post('/', async (req, res) => {
     if (type === 'supplier') {
       const wid = parseInt(supplierWarehouseId, 10);
       if (Number.isNaN(wid) || wid < 1) return res.status(400).json({ error: '원자재 업체 창고를 선택해 주세요.' });
-      const [wh] = await pool.query(
+      const [wh] = await getPool().query(
         `SELECT id FROM \`${SUPPLIER_WAREHOUSES_TABLE}\` WHERE id = ? AND deleted = 'N'`,
         [wid]
       );
@@ -269,14 +269,14 @@ router.post('/', async (req, res) => {
     } else {
       const wid = parseInt(bnkWarehouseId, 10);
       if (Number.isNaN(wid) || wid < 1) return res.status(400).json({ error: '비엔케이 창고를 선택해 주세요.' });
-      const [wh] = await pool.query(
+      const [wh] = await getPool().query(
         `SELECT id FROM \`${BNK_WAREHOUSES_TABLE}\` WHERE id = ? AND deleted = 'N'`,
         [wid]
       );
       if (!wh.length) return res.status(400).json({ error: '선택한 창고를 찾을 수 없습니다.' });
     }
 
-    const [result] = await pool.query(
+    const [result] = await getPool().query(
       `INSERT INTO \`${SNAPSHOTS_TABLE}\` (snapshot_type, supplier_warehouse_id, bnk_warehouse_id, stock_date, updated_by)
        VALUES (?, ?, ?, ?, ?)`,
       [
@@ -293,11 +293,11 @@ router.post('/', async (req, res) => {
       parseInt(l.raw_material_id, 10),
       Number(l.quantity) || 0,
     ]);
-    await pool.query(
+    await getPool().query(
       `INSERT INTO \`${LINES_TABLE}\` (snapshot_id, raw_material_id, quantity) VALUES ?`,
       [lineRows]
     );
-    const [snap] = await pool.query(
+    const [snap] = await getPool().query(
       `SELECT ss.*, sw.name AS supplier_warehouse_name, sup.name AS supplier_name,
         bw.name AS bnk_warehouse_name
        FROM \`${SNAPSHOTS_TABLE}\` ss
@@ -307,7 +307,7 @@ router.post('/', async (req, res) => {
        WHERE ss.id = ?`,
       [snapshotId]
     );
-    const [linesRes] = await pool.query(
+    const [linesRes] = await getPool().query(
       `SELECT sl.raw_material_id, sl.quantity, rm.name AS raw_material_name, mt.name AS raw_material_kind
        FROM \`${LINES_TABLE}\` sl
        INNER JOIN \`${RAW_MATERIALS_TABLE}\` rm ON rm.id = sl.raw_material_id
@@ -328,7 +328,7 @@ router.patch('/:id', async (req, res) => {
     if (Number.isNaN(id)) return res.status(400).json({ error: '잘못된 ID입니다.' });
     const { supplierWarehouseId, bnkWarehouseId, stockDate, lines, updatedBy } = req.body || {};
 
-    const [existing] = await pool.query(
+    const [existing] = await getPool().query(
       `SELECT id FROM \`${SNAPSHOTS_TABLE}\` WHERE id = ? AND deleted = 'N'`,
       [id]
     );
@@ -354,22 +354,22 @@ router.patch('/:id', async (req, res) => {
     }
     if (updates.length > 0) {
       params.push(id);
-      await pool.query(
+      await getPool().query(
         `UPDATE \`${SNAPSHOTS_TABLE}\` SET ${updates.join(', ')} WHERE id = ? AND deleted = 'N'`,
         params
       );
     }
     if (lines !== undefined && Array.isArray(lines)) {
-      await pool.query(`DELETE FROM \`${LINES_TABLE}\` WHERE snapshot_id = ?`, [id]);
+      await getPool().query(`DELETE FROM \`${LINES_TABLE}\` WHERE snapshot_id = ?`, [id]);
       const lineList = lines.filter((l) => l.raw_material_id && (l.quantity != null && l.quantity !== ''));
       if (lineList.length > 0) {
-        await pool.query(
+        await getPool().query(
           `INSERT INTO \`${LINES_TABLE}\` (snapshot_id, raw_material_id, quantity) VALUES ?`,
           [lineList.map((l) => [id, parseInt(l.raw_material_id, 10), Number(l.quantity) || 0])]
         );
       }
     }
-    const [snap] = await pool.query(
+    const [snap] = await getPool().query(
       `SELECT ss.*, sw.name AS supplier_warehouse_name, sup.name AS supplier_name, bw.name AS bnk_warehouse_name
        FROM \`${SNAPSHOTS_TABLE}\` ss
        LEFT JOIN \`${SUPPLIER_WAREHOUSES_TABLE}\` sw ON sw.id = ss.supplier_warehouse_id AND sw.deleted = 'N'
@@ -378,7 +378,7 @@ router.patch('/:id', async (req, res) => {
        WHERE ss.id = ?`,
       [id]
     );
-    const [linesRes] = await pool.query(
+    const [linesRes] = await getPool().query(
       `SELECT sl.raw_material_id, sl.quantity, rm.name AS raw_material_name, mt.name AS raw_material_kind
        FROM \`${LINES_TABLE}\` sl
        INNER JOIN \`${RAW_MATERIALS_TABLE}\` rm ON rm.id = sl.raw_material_id
@@ -398,7 +398,7 @@ router.delete('/:id', async (req, res) => {
     const id = parseInt(req.params.id, 10);
     if (Number.isNaN(id)) return res.status(400).json({ error: '잘못된 ID입니다.' });
     const updatedBy = req.body?.updatedBy != null ? String(req.body.updatedBy).trim() : null;
-    const [result] = await pool.query(
+    const [result] = await getPool().query(
       `UPDATE \`${SNAPSHOTS_TABLE}\` SET deleted = 'Y', updated_at = CURRENT_TIMESTAMP, updated_by = ? WHERE id = ? AND deleted = 'N'`,
       [updatedBy, id]
     );

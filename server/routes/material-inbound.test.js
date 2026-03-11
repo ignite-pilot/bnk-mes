@@ -7,16 +7,19 @@ import request from 'supertest';
 const mockQuery = jest.fn();
 const sendInboundEmail = jest.fn();
 
+const mockPool = {
+  query: mockQuery,
+  getConnection: jest.fn(() =>
+    Promise.resolve({
+      query: mockQuery,
+      release: jest.fn(),
+    })
+  ),
+};
 jest.unstable_mockModule('../lib/db.js', () => ({
-  default: {
-    query: mockQuery,
-    getConnection: jest.fn(() =>
-      Promise.resolve({
-        query: mockQuery,
-        release: jest.fn(),
-      })
-    ),
-  },
+  initDb: jest.fn(() => Promise.resolve()),
+  getPool: jest.fn(() => mockPool),
+  default: { initDb: jest.fn(() => Promise.resolve()), getPool: jest.fn(() => mockPool) },
 }));
 jest.unstable_mockModule('../lib/notification.js', () => ({
   sendInboundEmail,
