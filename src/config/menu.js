@@ -53,4 +53,14 @@ export const menuConfig = [
       { id: 'inventory-semi', label: '반제품 재고 관리', path: '/inventory/semi' },
     ],
   },
+  {
+    id: 'settings',
+    label: '설정',
+    path: '/settings',
+    children: [
+      { id: 'settings-code', label: '코드 관리', path: '/settings/code' },
+      { id: 'settings-other', label: '기타 설정', path: '/settings/other' },
+      { id: 'settings-template', label: '발송 Template 관리', path: '/settings/template' },
+    ],
+  },
 ];
