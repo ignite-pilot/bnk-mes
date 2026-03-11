@@ -59,7 +59,6 @@ export const menuConfig = [
     path: '/settings',
     children: [
       { id: 'settings-code', label: '코드 관리', path: '/settings/code' },
-      { id: 'settings-other', label: '기타 설정', path: '/settings/other' },
       { id: 'settings-template', label: '발송 Template 관리', path: '/settings/template' },
     ],
   },
