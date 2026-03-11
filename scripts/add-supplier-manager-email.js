@@ -1,9 +1,7 @@
 #!/usr/bin/env node
 /**
- * MySQL 데이터베이스 생성 스크립트
- * - DB_HOST 미설정 시 AWS Secret Manager "prod/ignite-pilot/mysql-realpilot" 에서 자동 조회 (AWS CLI 설정 필요)
- * - .env 또는 환경 변수: DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
- * - 실행: node scripts/create-mysql-db.js 또는 npm run setup:mysql
+ * raw_material_suppliers 테이블에 담당자 이메일(manager_email) 컬럼 추가
+ * - 실행: node scripts/add-supplier-manager-email.js
  */
 import 'dotenv/config';
 import { execSync } from 'child_process';
@@ -11,6 +9,7 @@ import mysql from 'mysql2/promise';
 
 const MYSQL_SECRET_ID = 'prod/ignite-pilot/mysql-realpilot';
 const DB_NAME = process.env.DB_NAME || 'bnk_mes';
+const TABLE = 'raw_material_suppliers';
 
 function getConfigFromAws() {
   try {
@@ -19,7 +18,7 @@ function getConfigFromAws() {
       { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
     );
     return JSON.parse(out.trim());
-  } catch (err) {
+  } catch {
     return null;
   }
 }
@@ -32,11 +31,6 @@ async function main() {
   const user = process.env.DB_USER || awsConfig?.DB_USER || 'root';
   const password = process.env.DB_PASSWORD ?? awsConfig?.DB_PASSWORD ?? '';
 
-  if (!user) {
-    console.error('DB_USER를 설정할 수 없습니다. .env 또는 AWS Secret Manager prod/ignite-pilot/mysql-realpilot 확인하세요.');
-    process.exit(1);
-  }
-
   let conn;
   try {
     conn = await mysql.createConnection({
@@ -44,12 +38,25 @@ async function main() {
       port,
       user,
       password,
-      multipleStatements: true,
+      database: DB_NAME,
     });
-    await conn.query(`CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
-    console.log(`데이터베이스 '${DB_NAME}' 생성(또는 이미 존재) 완료.`);
+
+    const [hasCol] = await conn.query(
+      `SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = 'manager_email'`,
+      [DB_NAME, TABLE]
+    );
+    if (hasCol.length === 0) {
+      await conn.query(`
+        ALTER TABLE \`${TABLE}\`
+        ADD COLUMN manager_email VARCHAR(200) DEFAULT NULL COMMENT '담당자 이메일' AFTER manager_contact
+      `);
+      console.log('raw_material_suppliers에 manager_email 컬럼 추가 완료.');
+    } else {
+      console.log('manager_email 컬럼이 이미 존재합니다.');
+    }
   } catch (err) {
-    console.error('DB 생성 실패:', err.message);
+    console.error('실패:', err.message);
     process.exit(1);
   } finally {
     if (conn) await conn.end();

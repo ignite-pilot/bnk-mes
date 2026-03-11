@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 /**
  * GitHub 저장소 생성 스크립트
- * - GITHUB_TOKEN: AWS Secret Manager "prod/ignite-pilot/github" 에서 Personal Access Token 확인
- * - 실행: GITHUB_TOKEN=<token> node scripts/create-github-repo.js
- * - 또는: gh auth login 후 gh repo create bnk-mes --private --source=. --remote=origin --push
+ * - GITHUB_TOKEN 미설정 시 AWS Secret Manager "prod/ignite-pilot/github" 에서 자동 조회 (AWS CLI 설정 필요)
+ * - 실행: node scripts/create-github-repo.js 또는 npm run setup:github
  */
 import fetch from 'node-fetch';
 import { execSync } from 'child_process';
@@ -11,7 +10,22 @@ import { existsSync } from 'fs';
 import { join } from 'path';
 
 const REPO_NAME = 'bnk-mes';
-const token = process.env.GITHUB_TOKEN;
+const GITHUB_SECRET_ID = 'prod/ignite-pilot/github';
+
+function getTokenFromAws() {
+  try {
+    const out = execSync(
+      `aws secretsmanager get-secret-value --secret-id "${GITHUB_SECRET_ID}" --query SecretString --output text`,
+      { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
+    );
+    const data = JSON.parse(out.trim());
+    return data['GITHUB-PAT'] || data.GITHUB_TOKEN || data.token;
+  } catch (err) {
+    return null;
+  }
+}
+
+const token = process.env.GITHUB_TOKEN || getTokenFromAws();
 
 async function createViaApi() {
   if (!token) {
@@ -98,8 +112,10 @@ async function main() {
       process.exit(1);
     }
   } else if (!token) {
-    console.log('GITHUB_TOKEN 없음. gh CLI 사용: gh auth login 후');
-    console.log('  gh repo create bnk-mes --private --source=. --remote=origin --push');
+    console.log('GITHUB_TOKEN 없음. AWS Secret Manager 자동 조회도 실패했습니다.');
+    console.log('  - AWS CLI 설정 후 재실행: aws configure 또는 aws sso login');
+    console.log('  - 또는 GITHUB_TOKEN=<token> npm run setup:github');
+    console.log('  - 또는 gh auth login 후: gh repo create bnk-mes --private --source=. --remote=origin --push');
   } else {
     console.log('이미 origin이 설정되어 있습니다:', cloneUrl);
   }

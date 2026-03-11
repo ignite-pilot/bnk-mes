@@ -9,7 +9,7 @@ router.get('/', async (req, res) => {
     timestamp: new Date().toISOString(),
     service: 'bnk-mes',
   };
-  if (process.env.MEMBER_API_BASE_URL) {
+  if (process.env.MEMBER_UI_BASE_URL || process.env.MEMBER_API_BASE_URL) {
     try {
       payload.member = await igMember.ping();
     } catch (err) {

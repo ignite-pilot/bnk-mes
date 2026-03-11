@@ -1,70 +1,40 @@
+import { jest } from '@jest/globals';
 import request from 'supertest';
-import app from '../index.js';
 
-const originalEnv = process.env.MEMBER_API_BASE_URL;
+const mockGetTokenFromCode = jest.fn();
+const mockMe = jest.fn();
 
-describe('Member API', () => {
-  beforeAll(() => {
-    process.env.MEMBER_API_BASE_URL = '';
-  });
-  afterAll(() => {
-    process.env.MEMBER_API_BASE_URL = originalEnv;
-  });
+jest.unstable_mockModule('../lib/ig-member-client.js', () => ({
+  getTokenFromCode: mockGetTokenFromCode,
+  me: mockMe,
+}));
 
-  describe('POST /api/member/register', () => {
-    it('returns 201 when loginId and password provided', async () => {
-      const res = await request(app)
-        .post('/api/member/register')
-        .send({ loginId: 'testuser1', password: 'pass123', name: 'Test' });
-      expect(res.status).toBe(201);
-      expect(res.body).toHaveProperty('token');
-      expect(res.body.user).toMatchObject({ loginId: 'testuser1', name: 'Test' });
-    });
+const { default: app } = await import('../index.js');
 
-    it('returns 400 when loginId missing', async () => {
-      const res = await request(app)
-        .post('/api/member/register')
-        .send({ password: 'pass123' });
-      expect(res.status).toBe(400);
-      expect(res.body.error).toContain('required');
-    });
-
-    it('returns 409 when loginId already exists', async () => {
-      await request(app)
-        .post('/api/member/register')
-        .send({ loginId: 'dupuser', password: 'pass123' });
-      const res = await request(app)
-        .post('/api/member/register')
-        .send({ loginId: 'dupuser', password: 'other' });
-      expect(res.status).toBe(409);
-    });
+describe('Member API (화면 연동)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  describe('POST /api/member/login', () => {
-    it('returns 401 for invalid credentials', async () => {
-      const res = await request(app)
-        .post('/api/member/login')
-        .send({ loginId: 'nonexistent', password: 'wrong' });
-      expect(res.status).toBe(401);
-    });
-
-    it('returns 200 and token for valid credentials', async () => {
-      await request(app)
-        .post('/api/member/register')
-        .send({ loginId: 'loginuser', password: 'secret' });
-      const res = await request(app)
-        .post('/api/member/login')
-        .send({ loginId: 'loginuser', password: 'secret' });
+  describe('GET /api/member/auth/token/:code', () => {
+    it('returns 200 and token when code is valid', async () => {
+      mockGetTokenFromCode.mockResolvedValue({
+        ok: true,
+        token: 'jwt-token-1',
+        user: { id: 1, loginId: 'user@example.com', name: 'User' },
+      });
+      const res = await request(app).get('/api/member/auth/token/abc123');
       expect(res.status).toBe(200);
-      expect(res.body).toHaveProperty('token');
-      expect(res.body.user.loginId).toBe('loginuser');
+      expect(res.body).toHaveProperty('token', 'jwt-token-1');
+      expect(res.body.user).toMatchObject({ loginId: 'user@example.com', name: 'User' });
+      expect(mockGetTokenFromCode).toHaveBeenCalledWith('abc123');
     });
 
-    it('returns 400 when password missing', async () => {
-      const res = await request(app)
-        .post('/api/member/login')
-        .send({ loginId: 'only' });
+    it('returns 400 when code is invalid', async () => {
+      mockGetTokenFromCode.mockResolvedValue({ ok: false, status: 400, error: 'Invalid or expired code' });
+      const res = await request(app).get('/api/member/auth/token/badcode');
       expect(res.status).toBe(400);
+      expect(res.body.error).toBeDefined();
     });
   });
 
@@ -75,15 +45,24 @@ describe('Member API', () => {
     });
 
     it('returns 200 with valid token', async () => {
-      const reg = await request(app)
-        .post('/api/member/register')
-        .send({ loginId: 'meuser', password: 'p' });
-      const token = reg.body.token;
+      mockMe.mockResolvedValue({
+        ok: true,
+        user: { id: 1, loginId: 'user@example.com', name: 'User' },
+      });
       const res = await request(app)
         .get('/api/member/me')
-        .set('Authorization', `Bearer ${token}`);
+        .set('Authorization', 'Bearer jwt-token-1');
       expect(res.status).toBe(200);
-      expect(res.body.user.loginId).toBe('meuser');
+      expect(res.body.user.loginId).toBe('user@example.com');
+      expect(mockMe).toHaveBeenCalledWith('Bearer jwt-token-1');
+    });
+  });
+
+  describe('POST /api/member/logout', () => {
+    it('returns 200', async () => {
+      const res = await request(app).post('/api/member/logout');
+      expect(res.status).toBe(200);
+      expect(res.body.ok).toBe(true);
     });
   });
 });

@@ -1,0 +1,454 @@
+.page {
+  background: #fff;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.title {
+  margin: 0 0 1rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.searchForm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: #f8fafc;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.searchLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8125rem;
+  color: #475569;
+}
+
+.input {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  min-width: 120px;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.toolbar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.tabBar {
+  display: flex;
+  gap: 0;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.tabBar .tab,
+.tabBar .tabActive {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  border: 1px solid #e2e8f0;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  margin-bottom: -1px;
+  background: #f1f5f9;
+  color: #475569;
+  cursor: pointer;
+}
+
+.tabBar .tab:hover {
+  background: #e2e8f0;
+}
+
+.tabBar .tabActive {
+  background: #fff;
+  color: #1e293b;
+  font-weight: 600;
+  border-bottom: 1px solid #fff;
+}
+
+.tabBar .tabExcel {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  background: #f8fafc;
+  color: #475569;
+  cursor: pointer;
+  margin-left: 0.25rem;
+}
+
+.tabBar .tabExcel:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+.btnPrimary {
+  padding: 0.5rem 1rem;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.btnPrimary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.btnSecondary {
+  padding: 0.5rem 1rem;
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.btnSecondary:hover {
+  background: #e2e8f0;
+}
+
+.btnSmall {
+  padding: 0.25rem 0.5rem;
+  margin-right: 0.25rem;
+  font-size: 0.75rem;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btnSmall:hover {
+  background: #e2e8f0;
+}
+
+.btnSmallDanger {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btnSmallDanger:hover {
+  background: #fee2e2;
+}
+
+.error {
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 1rem;
+  background: #fef2f2;
+  color: #b91c1c;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.loading {
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.tableWrap {
+  overflow-x: auto;
+  margin-bottom: 1rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.table th,
+.table td {
+  padding: 0.5rem 0.6rem;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.table th {
+  background: #f8fafc;
+  font-weight: 600;
+  color: #475569;
+}
+
+.table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.empty {
+  text-align: center;
+  color: #64748b;
+  padding: 1.5rem;
+}
+
+.linkBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #2563eb;
+  cursor: pointer;
+  font-size: inherit;
+  text-decoration: underline;
+}
+
+.linkBtn:hover {
+  color: #1d4ed8;
+}
+
+.paging {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+/* 목록 상단: 한번에 보기 개수 선택 */
+.listOptions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.8125rem;
+  color: #475569;
+}
+
+.listOptions label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.listOptions select {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-size: 0.8125rem;
+  background: #fff;
+  min-width: 4rem;
+}
+
+/* 페이지 네비게이션 */
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  margin-top: 1rem;
+  font-size: 0.8125rem;
+  color: #475569;
+}
+
+.paginationTotal {
+  margin-right: 0.75rem;
+  color: #64748b;
+}
+
+.pageNav {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.pageBtn {
+  min-width: 2rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  background: #fff;
+  color: #334155;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.pageBtn:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.pageBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pageBtnCurrent {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+.pageBtnCurrent:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #fff;
+}
+
+/* Modal */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 8px;
+  padding: 1.5rem;
+  max-width: 520px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+}
+
+.modalTitle {
+  margin: 0 0 1rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.form .label,
+.viewForm .label {
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.label {
+  font-size: 0.875rem;
+  color: #334155;
+}
+
+.label .input {
+  display: block;
+  margin-top: 0.25rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.required {
+  color: #dc2626;
+}
+
+.optional {
+  color: #64748b;
+  font-weight: normal;
+}
+
+.optionalHint {
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.editHint {
+  margin: 0 0 1rem;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.formActions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.dl {
+  margin: 0 0 1rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem 1rem;
+  font-size: 0.875rem;
+}
+
+.dl dt {
+  margin: 0;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.dl dd {
+  margin: 0;
+  color: #1e293b;
+}
+
+/* 보기 화면: 항목 이름 + 값을 한 행에 표시 */
+.viewForm {
+  padding: 0.25rem 0;
+}
+
+.viewForm .dl {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 0;
+  margin: 0 0 1.25rem;
+  font-size: 0.9375rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fafbfc;
+}
+
+.viewForm .dl dt {
+  padding: 0.5rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #64748b;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+  border-right: 1px solid #e2e8f0;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+
+.viewForm .dl dd {
+  margin: 0;
+  padding: 0.5rem 1rem;
+  color: #0f172a;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  word-break: break-word;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+}
+
+.viewForm .dl dt:last-of-type,
+.viewForm .dl dd:last-child {
+  border-bottom: none;
+}

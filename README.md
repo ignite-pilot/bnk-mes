@@ -28,8 +28,19 @@ npm start
 `.env.example`을 참고해 `.env`를 생성하세요.
 
 - `PORT`: 서버 포트 (기본 3000)
-- `MEMBER_API_BASE_URL`: ig-member 회원 API URL. 미설정 시 개발용 로컬 인증(메모리) 사용
+- `LOG_LEVEL`: 로그 레벨 (기본 info)
+- `CLOUDWATCH_LOG_GROUP`: 설정 시 해당 로그 그룹으로 로그 전송 (AWS 인증 필요)
 - `DB_*`: MySQL 접속 정보 (추후 DB 연동 시 사용)
+
+## CloudWatch 로그
+
+서버 로그는 Winston으로 출력하며, **CloudWatch Logs**로 보내려면 `.env`에 다음을 설정하세요.
+
+- `CLOUDWATCH_LOG_GROUP`: 로그 그룹 이름 (예: `/bnk-mes/app`)
+- `CLOUDWATCH_REGION` 또는 `AWS_REGION`: 리전 (예: `ap-northeast-2`)
+- (선택) `CLOUDWATCH_LOG_STREAM`: 로그 스트림 이름. 미설정 시 자동 생성
+
+AWS 인증은 IAM 역할(EC2/ECS/Lambda 등) 또는 `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`로 합니다. 미설정 시 콘솔에만 출력됩니다.
 
 ## API
 
@@ -66,8 +77,13 @@ npm run lint:fix
 
 아래 **한 가지**만 실행하면 됩니다.
 
-- **방법 A (토큰 입력으로 한 번에)**  
-  터미널에서 실행 후, AWS Secret Manager `prod/ignite-pilot/github`에서 확인한 토큰을 붙여넣기:
+- **방법 A (AWS CLI 설정된 경우)**  
+  토큰 없이 실행하면 AWS Secret Manager `prod/ignite-pilot/github`에서 자동 조회합니다.
+  ```bash
+  npm run setup:github
+  ```
+- **방법 A-2 (토큰 직접 입력)**  
+  토큰을 붙여넣기:
   ```bash
   ./scripts/create-github-repo.sh
   ```
@@ -94,31 +110,23 @@ npm run lint:fix
 
 ### 2. MySQL DB 생성
 
-AWS Secret Manager `prod/ignite-pilot/mysql-realpilot`에서 접속 정보를 확인한 뒤 `.env`에 설정하고:
+AWS CLI가 설정되어 있으면 접속 정보 없이 실행 시 Secret Manager에서 자동 조회합니다.
 
 ```bash
-# .env 예: DB_HOST=xxx DB_USER=xxx DB_PASSWORD=xxx
 npm run setup:mysql
 ```
 
-또는 SQL 직접 실행:
+(미설정 시 `.env`에 DB_HOST, DB_USER, DB_PASSWORD 등 설정 후 실행하거나, SQL 직접 실행: `mysql -h $DB_HOST -u $DB_USER -p < scripts/schema/01-init.sql`)
 
-```bash
-mysql -h $DB_HOST -u $DB_USER -p < scripts/schema/01-init.sql
-```
+### 3. ig-member 연동 (화면 연동)
 
-### 3. ig-member 연동
+[ig-member](https://github.com/ignite-pilot/ig-member)와 **화면 연동**되어 있습니다. API 직접 호출 없이 ig-member 로그인/회원가입 화면으로 이동합니다.
 
-- ig-member 서비스를 기동한 URL을 `.env`에 설정:
-  ```env
-  MEMBER_API_BASE_URL=http://localhost:8080
-  ```
-- 인증 경로가 `/api/auth`가 아니면:
-  ```env
-  MEMBER_AUTH_PATH_PREFIX=/api/auth
-  ```
-- 연동 시 로그인/회원가입/로그아웃은 ig-member API를 호출하며, 응답 형식(accessToken/token, user 등)은 자동 정규화됩니다.
-- `GET /api/health` 응답에 `member.available`로 ig-member 연결 여부를 확인할 수 있습니다.
+- **연동 URL**: `https://ig-member.ig-pilot.com` (기본값, 변경 시 `.env`에 `MEMBER_UI_BASE_URL` 설정)
+- **로그인**: 로그인 페이지에서 "ig-member로 로그인" 클릭 → ig-member 로그인 화면으로 이동 → 로그인 성공 시 bnk-mes `/auth/callback`으로 리다이렉트 후 토큰 저장
+- **회원가입**: "ig-member로 회원가입" 클릭 → ig-member 회원가입 화면에서 가입
+- **사용자 조회**: 토큰은 bnk-mes 백엔드에서 ig-member `GET /api/users/me`로 프록시
+- ig-member 측 CORS에 bnk-mes 프론트 오리진(배포 도메인 또는 `http://localhost:5173`) 추가 필요
 
 ## 메뉴 구성
 

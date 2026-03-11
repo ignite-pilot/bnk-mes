@@ -7,9 +7,10 @@ export const menuConfig = [
       { id: 'material-info', label: '원자재 정보', path: '/material/info' },
       { id: 'material-supplier', label: '원자재 공급 업체', path: '/material/supplier' },
       { id: 'material-warehouse', label: '원자재 업체 창고 정보', path: '/material/warehouse' },
-      { id: 'material-stock', label: '원자재 재고 관리', path: '/material/stock' },
       { id: 'material-inbound', label: '원자재 입고 요청/입고 관리', path: '/material/inbound' },
-      { id: 'material-order', label: '원자재 발주 요청 관리 (계획 포함)', path: '/material/order' },
+      { id: 'material-inbound-plan', label: '원자재 입고 요청 계획', path: '/material/inbound-plan' },
+      { id: 'material-order', label: '원자재 발주 요청 관리', path: '/material/order' },
+      { id: 'material-order-plan', label: '원자재 발주 계획', path: '/material/order-plan' },
     ],
   },
   {
@@ -47,6 +48,7 @@ export const menuConfig = [
     path: '/inventory',
     children: [
       { id: 'inventory-warehouse', label: '비엔케이 재고 창고 정보', path: '/inventory/warehouse' },
+      { id: 'material-stock', label: '원자재 재고 관리', path: '/material/stock' },
       { id: 'inventory-product', label: '완제품 재고 관리', path: '/inventory/product' },
       { id: 'inventory-semi', label: '반제품 재고 관리', path: '/inventory/semi' },
     ],

@@ -48,49 +48,21 @@ export function AuthProvider({ children }) {
     else setLoading(false);
   }, [token, fetchMe]);
 
-  const login = useCallback(async (loginId, password) => {
-    const res = await fetch('/api/member/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ loginId, password }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || '로그인 실패');
-    setToken(data.token);
-    setUser(data.user ?? null);
-    return data;
+  /** 화면 연동: ig-member 콜백에서 코드로 토큰 조회 후 호출 */
+  const setAuthFromCallback = useCallback((newToken, newUser) => {
+    setToken(newToken);
+    setUser(newUser ?? null);
   }, [setToken]);
 
-  const register = useCallback(async (loginId, password, name) => {
-    const res = await fetch('/api/member/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ loginId, password, name }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || '회원가입 실패');
-    setToken(data.token);
-    setUser(data.user ?? null);
-    return data;
+  const logout = useCallback(() => {
+    setToken(null);
   }, [setToken]);
-
-  const logout = useCallback(async () => {
-    try {
-      await fetch('/api/member/logout', {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-    } finally {
-      setToken(null);
-    }
-  }, [token, setToken]);
 
   const value = {
     user,
     token,
     loading,
-    login,
-    register,
+    setAuthFromCallback,
     logout,
     isAuthenticated: !!token,
   };

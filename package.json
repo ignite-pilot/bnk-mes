@@ -15,9 +15,18 @@
     "lint": "eslint . --ext .js,.jsx",
     "lint:fix": "eslint . --ext .js,.jsx --fix",
     "setup:github": "node scripts/create-github-repo.js",
-    "setup:mysql": "node scripts/create-mysql-db.js"
+    "setup:mysql": "node scripts/create-mysql-db.js",
+    "setup:raw-materials": "node scripts/create-raw-materials-table.js",
+    "setup:material-types": "node scripts/create-material-types-table.js",
+    "setup:material-suppliers": "node scripts/create-material-suppliers-table.js",
+    "setup:supplier-address-fields": "node scripts/add-supplier-address-fields.js",
+    "setup:supplier-manager-email": "node scripts/add-supplier-manager-email.js",
+    "setup:supplier-warehouses": "node scripts/create-supplier-warehouses-table.js",
+    "setup:material-stock": "node scripts/create-material-stock-tables.js",
+    "setup:material-inbound": "node scripts/create-material-inbound-tables.js"
   },
   "dependencies": {
+    "@aws-sdk/client-cloudwatch-logs": "^3.600.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
@@ -27,7 +36,9 @@
     "node-fetch": "^3.3.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.21.1"
+    "react-router-dom": "^6.21.1",
+    "winston": "^3.11.0",
+    "winston-cloudwatch": "^6.3.0"
   },
   "devDependencies": {
     "supertest": "^6.3.4",
