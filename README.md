@@ -51,6 +51,18 @@ AWS 인증은 IAM 역할(EC2/ECS/Lambda 등) 또는 `AWS_ACCESS_KEY_ID`, `AWS_SE
   - `GET /api/member/me`  
   - `POST /api/member/logout`  
 
+## 입고 요청 이메일 발송 (ig-notification)
+
+입고 요청 등록 시 선택한 **원자재 공급 업체**의 **담당자 이메일**로 알림이 발송됩니다. [ig-notification](https://github.com/ignite-pilot/ig-notification) API (`POST /api/v1/email/send`, multipart/form-data)를 사용합니다.
+
+- **SMTP 설정**: 기본적으로 **AWS Secrets Manager** 시크릿 `prod/ignite-pilot/smtp-naver` 값을 참고합니다. 시크릿 JSON 예: `sender_email`, `smtp_host`, `smtp_port`, `smtp_username`, `smtp_password` (또는 `from`, `host`, `port`, `user`, `password`). 환경 변수로 동일 키를 설정하면 env 값이 우선됩니다.
+- **환경 변수** (선택): `.env`에서 오버라이드 가능 — `IG_NOTIFICATION_SENDER_EMAIL`, `IG_NOTIFICATION_SMTP_HOST`, `IG_NOTIFICATION_SMTP_PORT`, `IG_NOTIFICATION_SMTP_USERNAME`, `IG_NOTIFICATION_SMTP_PASSWORD`. 시크릿 미사용 시 `IG_NOTIFICATION_SMTP_SECRET_ID`를 비우거나, 로컬 테스트 시 env만 설정해도 됩니다.
+- **이메일이 안 갈 때 확인할 것**
+  1. **담당자 이메일**: 원자재 관리 → 원자재 공급 업체에 **담당자 이메일**이 있는지 확인하세요.
+  2. **SMTP**: 로그에 `notification: skip send, SMTP not configured`면 AWS 시크릿 `prod/ignite-pilot/smtp-naver` 접근 권한 및 시크릿 내용, 또는 env 설정을 확인하세요. `notification: failed to load SMTP from Secrets Manager`면 IAM/권한 또는 시크릿 ID를 확인하세요.
+  3. **발송 실패**: `notification: send failed` 시 ig-notification 서버·URL·SMTP 계정을 확인하세요.
+- **API 응답**: 입고 요청 생성 시 `emailSent`, `emailSkipReason`(예: `no_manager_email`, `smtp_not_configured`, `api_4xx`, `network_error`)이 포함됩니다.
+
 ## 테스트
 
 ```bash

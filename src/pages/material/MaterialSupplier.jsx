@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 import { useAuth } from '../../context/AuthContext';
 import { useDaumPostcode } from '../../hooks/useDaumPostcode';
 import RawMaterialSelectPopup from '../../components/RawMaterialSelectPopup';
@@ -36,6 +37,7 @@ function getSelectedMaterialLabel(ids, materials) {
 
 function MaterialSupplier() {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [materials, setMaterials] = useState([]); // 원자재 목록 (제공 원자재 선택용)
   const [list, setList] = useState([]);
   const [total, setTotal] = useState(0);
@@ -360,6 +362,8 @@ function MaterialSupplier() {
   };
 
   const renderCell = (v) => (v != null && v !== '' ? String(v) : '-');
+  /** 원자재 관련 숫자: 정수만 표시 */
+  const formatQty = (v) => (v != null && v !== '' && !Number.isNaN(Number(v)) ? String(Math.round(Number(v))) : '-');
 
   return (
     <div className={styles.page}>
@@ -376,24 +380,28 @@ function MaterialSupplier() {
             placeholder="검색"
           />
         </label>
-        <label className={styles.searchLabel}>
-          기간(시작)
-          <input
-            type="date"
-            value={search.startDate}
-            onChange={(e) => setSearch((s) => ({ ...s, startDate: e.target.value }))}
-            className={styles.input}
-          />
-        </label>
-        <label className={styles.searchLabel}>
-          기간(종료)
-          <input
-            type="date"
-            value={search.endDate}
-            onChange={(e) => setSearch((s) => ({ ...s, endDate: e.target.value }))}
-            className={styles.input}
-          />
-        </label>
+        {!isMobile && (
+          <>
+            <label className={styles.searchLabel}>
+              기간(시작)
+              <input
+                type="date"
+                value={search.startDate}
+                onChange={(e) => setSearch((s) => ({ ...s, startDate: e.target.value }))}
+                className={styles.input}
+              />
+            </label>
+            <label className={styles.searchLabel}>
+              기간(종료)
+              <input
+                type="date"
+                value={search.endDate}
+                onChange={(e) => setSearch((s) => ({ ...s, endDate: e.target.value }))}
+                className={styles.input}
+              />
+            </label>
+          </>
+        )}
         <button type="submit" className={styles.btnPrimary}>
           검색
         </button>
@@ -442,20 +450,24 @@ function MaterialSupplier() {
             <thead>
               <tr>
                 <th>업체 명</th>
-                <th>업체 연락처</th>
-                <th>담당자</th>
                 <th>담당자 연락처</th>
-                <th>담당자 이메일</th>
-                <th>취급 원자재 개수</th>
-                <th>수정일자</th>
-                <th>수정자</th>
+                {!isMobile && (
+                  <>
+                    <th>업체 연락처</th>
+                    <th>담당자</th>
+                    <th>담당자 이메일</th>
+                    <th>취급 원자재 개수</th>
+                    <th>수정일자</th>
+                    <th>수정자</th>
+                  </>
+                )}
                 <th>기능</th>
               </tr>
             </thead>
             <tbody>
               {list.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className={styles.empty}>
+                  <td colSpan={isMobile ? 3 : 9} className={styles.empty}>
                     조회된 공급 업체가 없습니다.
                   </td>
                 </tr>
@@ -471,13 +483,17 @@ function MaterialSupplier() {
                         {renderCell(row.name)}
                       </button>
                     </td>
-                    <td>{renderCell(row.contact)}</td>
-                    <td>{renderCell(row.manager_name)}</td>
                     <td>{renderCell(row.manager_contact)}</td>
-                    <td>{renderCell(row.manager_email)}</td>
-                    <td>{renderCell(row.material_count)}</td>
-                    <td>{row.updated_at ? formatDate(row.updated_at) : '-'}</td>
-                    <td>{renderCell(row.updated_by)}</td>
+                    {!isMobile && (
+                      <>
+                        <td>{renderCell(row.contact)}</td>
+                        <td>{renderCell(row.manager_name)}</td>
+                        <td>{renderCell(row.manager_email)}</td>
+                        <td>{formatQty(row.material_count)}</td>
+                        <td>{row.updated_at ? formatDate(row.updated_at) : '-'}</td>
+                        <td>{renderCell(row.updated_by)}</td>
+                      </>
+                    )}
                     <td>
                       <button
                         type="button"
@@ -746,9 +762,9 @@ function MaterialSupplier() {
                   <dt>담당자 이메일</dt>
                   <dd>{renderCell(formData.manager_email)}</dd>
                   <dt>입고 요청 후 리드 타임(일)</dt>
-                  <dd>{renderCell(formData.inbound_lead_time)}</dd>
+                  <dd>{formatQty(formData.inbound_lead_time)}</dd>
                   <dt>발주 요청 후 리드 타임(일)</dt>
-                  <dd>{renderCell(formData.order_lead_time)}</dd>
+                  <dd>{formatQty(formData.order_lead_time)}</dd>
                   <dt>제공 원자재</dt>
                   <dd>
                     {formData.raw_material_ids?.length

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 import { useDaumPostcode } from '../../hooks/useDaumPostcode';
 import RawMaterialSelectPopup from '../../components/RawMaterialSelectPopup';
 import styles from './MaterialInfo.module.css';
@@ -36,6 +37,7 @@ function getSelectedMaterialLabel(ids, materials) {
 
 function MaterialWarehouse() {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [suppliers, setSuppliers] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [list, setList] = useState([]);
@@ -423,24 +425,28 @@ function MaterialWarehouse() {
             placeholder="검색"
           />
         </label>
-        <label className={styles.searchLabel}>
-          기간(시작)
-          <input
-            type="date"
-            value={search.startDate}
-            onChange={(e) => setSearch((s) => ({ ...s, startDate: e.target.value }))}
-            className={styles.input}
-          />
-        </label>
-        <label className={styles.searchLabel}>
-          기간(종료)
-          <input
-            type="date"
-            value={search.endDate}
-            onChange={(e) => setSearch((s) => ({ ...s, endDate: e.target.value }))}
-            className={styles.input}
-          />
-        </label>
+        {!isMobile && (
+          <>
+            <label className={styles.searchLabel}>
+              기간(시작)
+              <input
+                type="date"
+                value={search.startDate}
+                onChange={(e) => setSearch((s) => ({ ...s, startDate: e.target.value }))}
+                className={styles.input}
+              />
+            </label>
+            <label className={styles.searchLabel}>
+              기간(종료)
+              <input
+                type="date"
+                value={search.endDate}
+                onChange={(e) => setSearch((s) => ({ ...s, endDate: e.target.value }))}
+                className={styles.input}
+              />
+            </label>
+          </>
+        )}
         <button type="submit" className={styles.btnPrimary}>
           검색
         </button>
@@ -490,16 +496,20 @@ function MaterialWarehouse() {
               <tr>
                 <th>원자재 공급 업체</th>
                 <th>창고 이름</th>
-                <th>주소</th>
-                <th>수정일자</th>
-                <th>수정자</th>
+                {!isMobile && (
+                  <>
+                    <th>주소</th>
+                    <th>수정일자</th>
+                    <th>수정자</th>
+                  </>
+                )}
                 <th>기능</th>
               </tr>
             </thead>
             <tbody>
               {list.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className={styles.empty}>
+                  <td colSpan={isMobile ? 3 : 6} className={styles.empty}>
                     조회된 창고가 없습니다.
                   </td>
                 </tr>
@@ -516,9 +526,13 @@ function MaterialWarehouse() {
                         {renderCell(row.name)}
                       </button>
                     </td>
-                    <td>{renderCell(row.address)}</td>
-                    <td>{row.updated_at ? formatDate(row.updated_at) : '-'}</td>
-                    <td>{renderCell(row.updated_by)}</td>
+                    {!isMobile && (
+                      <>
+                        <td>{renderCell(row.address)}</td>
+                        <td>{row.updated_at ? formatDate(row.updated_at) : '-'}</td>
+                        <td>{renderCell(row.updated_by)}</td>
+                      </>
+                    )}
                     <td>
                       <button
                         type="button"

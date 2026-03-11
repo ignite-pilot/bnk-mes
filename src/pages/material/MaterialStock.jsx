@@ -421,6 +421,8 @@ function MaterialStock() {
   };
 
   const renderCell = (v) => (v != null && v !== '' ? String(v) : '-');
+  /** 원자재 수량·안전재고 등 숫자: 정수만 표시 */
+  const formatQty = (v) => (v != null && v !== '' && !Number.isNaN(Number(v)) ? String(Math.round(Number(v))) : '-');
 
   const rawMaterialDisplay = (row) => {
     const parts = [row.raw_material_kind, row.raw_material_name].filter(Boolean);
@@ -602,8 +604,8 @@ function MaterialStock() {
                       </Link>
                     </td>
                     <td>{row.snapshot_type === 'bnk' ? '비엔케이' : '원자재'}</td>
-                    <td>{renderCell(row.quantity)}</td>
-                    <td>{renderCell(safeStock(row))}</td>
+                    <td>{formatQty(row.quantity)}</td>
+                    <td>{formatQty(safeStock(row))}</td>
                     <td>
                       <span style={riskStyle(row.risk_color)}>{row.risk_label || '-'}</span>
                     </td>
@@ -810,7 +812,7 @@ function MaterialStock() {
                       {(formData.lines || []).map((l, i) => (
                         <tr key={i}>
                           <td>{l.raw_material_kind ? `${l.raw_material_kind} / ${l.raw_material_name}` : l.raw_material_name}</td>
-                          <td>{l.quantity}</td>
+                          <td>{formatQty(l.quantity)}</td>
                         </tr>
                       ))}
                     </tbody>

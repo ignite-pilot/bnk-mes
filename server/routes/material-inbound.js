@@ -74,10 +74,11 @@ function toCsvCell(v) {
  */
 export async function exportExcel(req, res) {
   try {
-    const { view = 'requests', rawMaterialIds = '', inboundStatus = '', startDate, endDate } = req.query;
+    const { view = 'requests', rawMaterialIds = '', inboundStatus = '', startDate, endDate, supplierId } = req.query;
     const requestIdRaw = req.query.requestId ?? req.query.requestid ?? '';
     const { start, end } = defaultDateRange();
     const { fromStr, toStr } = dateRangeStrings(startDate, endDate, start, end);
+    const supplierIdNum = supplierId != null && supplierId !== '' ? parseInt(supplierId, 10) : null;
     const materialIds = rawMaterialIds
       ? rawMaterialIds.split(',').map((x) => parseInt(x.trim(), 10)).filter((x) => !Number.isNaN(x) && x > 0)
       : [];
@@ -100,6 +101,10 @@ export async function exportExcel(req, res) {
       if (inboundStatus && ['request', 'received', 'returned'].includes(inboundStatus)) {
         whereParts.push('l.status = ?');
         params.push(inboundStatus);
+      }
+      if (supplierIdNum != null && !Number.isNaN(supplierIdNum) && supplierIdNum > 0) {
+        whereParts.push('r.supplier_id = ?');
+        params.push(supplierIdNum);
       }
       if (materialIds.length) {
         whereParts.push(`l.raw_material_id IN (${materialIds.map(() => '?').join(',')})`);
@@ -152,6 +157,10 @@ export async function exportExcel(req, res) {
     }
     if (inboundStatus === 'cancelled') wherePartsReq.push("r.status = 'cancelled'");
     else if (inboundStatus === 'active') wherePartsReq.push("r.status = 'active'");
+    if (supplierIdNum != null && !Number.isNaN(supplierIdNum) && supplierIdNum > 0) {
+      wherePartsReq.push('r.supplier_id = ?');
+      paramsReq.push(supplierIdNum);
+    }
     if (materialIds.length) {
       wherePartsReq.push(`EXISTS (SELECT 1 FROM \`${LINES_TABLE}\` l2 WHERE l2.request_id = r.id AND l2.raw_material_id IN (${materialIds.map(() => '?').join(',')}))`);
       paramsReq.push(...materialIds);
@@ -215,7 +224,7 @@ router.get('/export-excel', exportExcel);
 /** 입고 요청 목록 (Tab1: 요청 단위) - 앱에서 GET /api/material-inbound 로도 등록하여 404 방지 */
 export async function listHandler(req, res) {
   try {
-    const { view = 'requests', rawMaterialIds = '', inboundStatus = '', startDate, endDate, page = 1, limit = 20 } = req.query;
+    const { view = 'requests', rawMaterialIds = '', inboundStatus = '', startDate, endDate, supplierId, page = 1, limit = 20 } = req.query;
     const requestIdRaw = req.query.requestId ?? req.query.requestid ?? '';
     const { start, end } = defaultDateRange();
     const { fromStr, toStr } = dateRangeStrings(startDate, endDate, start, end);
@@ -290,6 +299,11 @@ export async function listHandler(req, res) {
       whereParts.push("r.status = 'received'");
     } else if (inboundStatus === 'returned') {
       whereParts.push("r.status = 'returned'");
+    }
+    const supplierIdNum = supplierId != null && supplierId !== '' ? parseInt(supplierId, 10) : null;
+    if (supplierIdNum != null && !Number.isNaN(supplierIdNum) && supplierIdNum > 0) {
+      whereParts.push('r.supplier_id = ?');
+      params.push(supplierIdNum);
     }
     if (materialIds.length) {
       whereParts.push(`EXISTS (SELECT 1 FROM \`${LINES_TABLE}\` l2 WHERE l2.request_id = r.id AND l2.raw_material_id IN (${materialIds.map(() => '?').join(',')}))`);
@@ -436,24 +450,29 @@ router.post('/', async (req, res) => {
     const toEmailRaw = sup[0].manager_email;
     const toEmail = toEmailRaw != null ? String(toEmailRaw).trim() : '';
     let emailSent = false;
+    let emailSkipReason = null;
     if (toEmail) {
       const lineSummary = lines.map((l) => `- ${(l.raw_material_kind ? l.raw_material_kind + ' / ' : '') + (l.raw_material_name || '')}: ${l.quantity}`).join('\n');
       try {
-        emailSent = await sendInboundEmail(
+        const sendResult = await sendInboundEmail(
           toEmail,
           `[BNK-MES] 원자재 입고 요청 - ${sup[0].name}`,
           `원자재 입고 요청이 등록되었습니다.\n업체: ${sup[0].name}\n입고 희망일: ${desiredDateStr}\n\n원자재:\n${lineSummary}`
         );
+        emailSent = sendResult.ok;
         if (!emailSent) {
-          logger.warn('material-inbound: 입고 요청 이메일 발송 실패 (ig-notification 반환 실패)', { supplierId: sid, toEmail });
+          emailSkipReason = sendResult.reason || 'notification_failed';
+          logger.warn('material-inbound: 입고 요청 이메일 발송 실패', { supplierId: sid, toEmail, reason: sendResult.reason, detail: sendResult.detail });
         }
       } catch (e) {
+        emailSkipReason = 'exception';
         logger.error('material-inbound: 입고 요청 이메일 발송 예외', { supplierId: sid, toEmail, error: e.message });
       }
     } else {
+      emailSkipReason = 'no_manager_email';
       logger.warn('material-inbound: 입고 요청 담당자 이메일 없음, 발송 생략', { supplierId: sid, supplierName: sup[0].name });
     }
-    res.status(201).json({ ...created[0], lines, emailSent });
+    res.status(201).json({ ...created[0], lines, emailSent, emailSkipReason });
   } catch (err) {
     logger.error('material-inbound create error', { error: err.message });
     res.status(500).json({ error: '등록에 실패했습니다.', detail: err.message });

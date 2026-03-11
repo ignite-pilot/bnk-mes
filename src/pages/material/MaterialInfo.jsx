@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 import styles from './MaterialInfo.module.css';
 
 const API = '/api/material';
@@ -10,13 +11,20 @@ function formatDate(d) {
   return dt.toISOString().slice(0, 10);
 }
 
-/** 두께/폭/길이 등 mm 단위 숫자 표기: 20.0000 → "20mm", 100.5 → "100.5mm" */
+/** 두께/폭/길이 등 mm 단위 숫자 표기: 정수만 (예: 20.0000 → "20mm") */
 function formatMm(v) {
   if (v == null || v === '') return '-';
   const n = Number(v);
   if (Number.isNaN(n)) return '-';
-  const s = n % 1 === 0 ? String(Math.round(n)) : String(Number(n.toFixed(4)));
-  return `${s}mm`;
+  return `${Math.round(n)}mm`;
+}
+
+/** 원자재 수량·안전재고 등 숫자 표기: 정수만 */
+function formatQty(v) {
+  if (v == null || v === '') return '-';
+  const n = Number(v);
+  if (Number.isNaN(n)) return '-';
+  return String(Math.round(n));
 }
 
 function defaultDateRange() {
@@ -30,6 +38,7 @@ const PAGE_SIZES = [10, 15, 20, 50, 100];
 
 function MaterialInfo() {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [types, setTypes] = useState([]);
   const [list, setList] = useState([]);
   const [total, setTotal] = useState(0);
@@ -347,24 +356,28 @@ function MaterialInfo() {
             placeholder="검색"
           />
         </label>
-        <label className={styles.searchLabel}>
-          등록일자(시작)
-          <input
-            type="date"
-            value={search.startDate}
-            onChange={(e) => setSearch((s) => ({ ...s, startDate: e.target.value }))}
-            className={styles.input}
-          />
-        </label>
-        <label className={styles.searchLabel}>
-          등록일자(종료)
-          <input
-            type="date"
-            value={search.endDate}
-            onChange={(e) => setSearch((s) => ({ ...s, endDate: e.target.value }))}
-            className={styles.input}
-          />
-        </label>
+        {!isMobile && (
+          <>
+            <label className={styles.searchLabel}>
+              등록일자(시작)
+              <input
+                type="date"
+                value={search.startDate}
+                onChange={(e) => setSearch((s) => ({ ...s, startDate: e.target.value }))}
+                className={styles.input}
+              />
+            </label>
+            <label className={styles.searchLabel}>
+              등록일자(종료)
+              <input
+                type="date"
+                value={search.endDate}
+                onChange={(e) => setSearch((s) => ({ ...s, endDate: e.target.value }))}
+                className={styles.input}
+              />
+            </label>
+          </>
+        )}
         <button type="submit" className={styles.btnPrimary}>
           검색
         </button>
@@ -414,21 +427,25 @@ function MaterialInfo() {
               <tr>
                 <th>원자재 종류</th>
                 <th>원자재 이름</th>
-                <th>색상</th>
-                <th>두께 (mm)</th>
-                <th>폭 (mm)</th>
-                <th>길이 (mm)</th>
-                <th>원자재 업체 안전재고</th>
-                <th>비엔케이 창고 안전재고</th>
-                <th>수정일자</th>
-                <th>수정자</th>
+                {!isMobile && (
+                  <>
+                    <th>색상</th>
+                    <th>두께 (mm)</th>
+                    <th>폭 (mm)</th>
+                    <th>길이 (mm)</th>
+                    <th>원자재 업체 안전재고</th>
+                    <th>비엔케이 창고 안전재고</th>
+                    <th>수정일자</th>
+                    <th>수정자</th>
+                  </>
+                )}
                 <th>기능</th>
               </tr>
             </thead>
             <tbody>
               {list.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className={styles.empty}>
+                  <td colSpan={isMobile ? 3 : 11} className={styles.empty}>
                     조회된 원자재가 없습니다.
                   </td>
                 </tr>
@@ -445,14 +462,18 @@ function MaterialInfo() {
                         {renderCell(row.name)}
                       </button>
                     </td>
-                    <td>{renderCell(row.color)}</td>
-                    <td>{formatMm(row.thickness)}</td>
-                    <td>{formatMm(row.width)}</td>
-                    <td>{formatMm(row.length)}</td>
-                    <td>{renderCell(row.supplier_safety_stock)}</td>
-                    <td>{renderCell(row.bnk_warehouse_safety_stock)}</td>
-                    <td>{row.updated_at ? formatDate(row.updated_at) : '-'}</td>
-                    <td>{renderCell(row.updated_by)}</td>
+                    {!isMobile && (
+                      <>
+                        <td>{renderCell(row.color)}</td>
+                        <td>{formatMm(row.thickness)}</td>
+                        <td>{formatMm(row.width)}</td>
+                        <td>{formatMm(row.length)}</td>
+                        <td>{formatQty(row.supplier_safety_stock)}</td>
+                        <td>{formatQty(row.bnk_warehouse_safety_stock)}</td>
+                        <td>{row.updated_at ? formatDate(row.updated_at) : '-'}</td>
+                        <td>{renderCell(row.updated_by)}</td>
+                      </>
+                    )}
                     <td>
                       <button
                         type="button"
@@ -686,9 +707,9 @@ function MaterialInfo() {
                   <dt>길이 (mm)</dt>
                   <dd>{formatMm(formData.length)}</dd>
                   <dt>원자재 업체 안전재고 수량</dt>
-                  <dd>{renderCell(formData.supplier_safety_stock)}</dd>
+                  <dd>{formatQty(formData.supplier_safety_stock)}</dd>
                   <dt>비엔케이 창고 안전재고 수량</dt>
-                  <dd>{renderCell(formData.bnk_warehouse_safety_stock)}</dd>
+                  <dd>{formatQty(formData.bnk_warehouse_safety_stock)}</dd>
                   <dt>수정일자</dt>
                   <dd>{formData.updated_at ? formatDate(formData.updated_at) : '-'}</dd>
                   <dt>수정자</dt>

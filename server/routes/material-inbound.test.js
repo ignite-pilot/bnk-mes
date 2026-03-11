@@ -27,7 +27,7 @@ const { default: app } = await import('../index.js');
 describe('원자재 입고 요청 API', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    sendInboundEmail.mockResolvedValue(undefined);
+    sendInboundEmail.mockResolvedValue({ ok: true });
   });
 
   describe('GET /api/material-inbound', () => {

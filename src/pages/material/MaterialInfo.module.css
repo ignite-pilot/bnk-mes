@@ -452,3 +452,90 @@
 .viewForm .dl dd:last-child {
   border-bottom: none;
 }
+
+/* 반응형: 태블릿 */
+@media (max-width: 1023px) {
+  .page {
+    padding: 1rem;
+  }
+  .searchForm {
+    gap: 0.5rem 0.75rem;
+    padding: 0.75rem;
+  }
+  .table th,
+  .table td {
+    padding: 0.4rem 0.5rem;
+    font-size: 0.75rem;
+  }
+}
+
+/* 반응형: 모바일 */
+@media (max-width: 767px) {
+  .page {
+    padding: 0.75rem;
+    border-radius: 6px;
+  }
+  .title {
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
+  }
+  .searchForm {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .searchLabel .input {
+    min-width: 0;
+  }
+  .toolbar {
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+  }
+  .tableWrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 0.75rem;
+  }
+  .table {
+    font-size: 0.75rem;
+    min-width: 280px;
+  }
+  .table th,
+  .table td {
+    padding: 0.35rem 0.4rem;
+    white-space: nowrap;
+  }
+  .table th:last-child,
+  .table td:last-child {
+    white-space: normal;
+  }
+  .btnSmall,
+  .btnSmallDanger {
+    padding: 0.2rem 0.4rem;
+    font-size: 0.7rem;
+    margin-right: 0.2rem;
+    margin-bottom: 0.2rem;
+  }
+  .pagination {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.75rem;
+    font-size: 0.75rem;
+  }
+  .modal {
+    padding: 1rem;
+    max-height: 85vh;
+  }
+  .modalTitle {
+    font-size: 1rem;
+  }
+  .viewForm .dl {
+    grid-template-columns: 1fr;
+  }
+  .viewForm .dl dt {
+    border-right: none;
+    border-bottom: 1px solid #e2e8f0;
+  }
+}

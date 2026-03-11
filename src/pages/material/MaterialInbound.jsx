@@ -7,6 +7,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 import RawMaterialSelectPopup from '../../components/RawMaterialSelectPopup';
 import styles from './MaterialInfo.module.css';
 
@@ -55,8 +56,10 @@ function MaterialInbound() {
     requestId: '',
     rawMaterialIds: [],
     inboundStatus: '',
+    supplierId: '',
     ...defaultDateRange(),
   });
+  const isMobile = useIsMobile();
   const [suppliers, setSuppliers] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [formOpen, setFormOpen] = useState(false);
@@ -110,6 +113,7 @@ function MaterialInbound() {
       if (reqId) q.set('requestId', reqId);
       if (search.rawMaterialIds.length) q.set('rawMaterialIds', search.rawMaterialIds.join(','));
       if (search.inboundStatus) q.set('inboundStatus', search.inboundStatus);
+      if (search.supplierId) q.set('supplierId', search.supplierId);
       const res = await fetch(`${API}?${q}`, { signal: ac.signal });
       clearTimeout(t);
       const text = await res.text();
@@ -128,7 +132,7 @@ function MaterialInbound() {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, search.startDate, search.endDate, search.requestId, search.rawMaterialIds, search.inboundStatus]);
+  }, [page, limit, search.startDate, search.endDate, search.requestId, search.rawMaterialIds, search.inboundStatus, search.supplierId]);
 
   useEffect(() => {
     fetchList();
@@ -157,6 +161,7 @@ function MaterialInbound() {
     requestId: '',
     rawMaterialIds: [],
     inboundStatus: '',
+    supplierId: '',
     ...defaultDateRange(),
   };
   const handleResetSearch = () => {
@@ -334,6 +339,7 @@ function MaterialInbound() {
     if (reqId) q.set('requestId', reqId);
     if (search.rawMaterialIds.length) q.set('rawMaterialIds', search.rawMaterialIds.join(','));
     if (search.inboundStatus) q.set('inboundStatus', search.inboundStatus);
+    if (search.supplierId) q.set('supplierId', search.supplierId);
     setError('');
     try {
       const res = await fetch(`${API}/export-excel?${q}`);
@@ -358,6 +364,8 @@ function MaterialInbound() {
   };
 
   const renderCell = (v) => (v != null && v !== '' ? String(v) : '-');
+  /** 원자재 수량 등 숫자: 정수만 표시 */
+  const formatQty = (v) => (v != null && v !== '' && !Number.isNaN(Number(v)) ? String(Math.round(Number(v))) : '-');
   const totalPages = Math.ceil(total / limit) || 1;
   const startPage = Math.max(1, page - 2);
   const endPage = Math.min(totalPages, page + 2);
@@ -368,16 +376,31 @@ function MaterialInbound() {
       <h1 className={styles.title}>원자재 입고 요청/입고 관리</h1>
 
       <form onSubmit={handleSearch} className={styles.searchForm}>
+        {!isMobile && (
+          <label className={styles.searchLabel}>
+            입고 상태
+            <select
+              value={search.inboundStatus}
+              onChange={(e) => setSearch((s) => ({ ...s, inboundStatus: e.target.value }))}
+              className={styles.input}
+            >
+              <option value="">전체</option>
+              <option value="active">활성</option>
+              <option value="cancelled">입고 취소</option>
+            </select>
+          </label>
+        )}
         <label className={styles.searchLabel}>
-          입고 상태
+          업체명
           <select
-            value={search.inboundStatus}
-            onChange={(e) => setSearch((s) => ({ ...s, inboundStatus: e.target.value }))}
+            value={String(search.supplierId ?? '')}
+            onChange={(e) => setSearch((s) => ({ ...s, supplierId: e.target.value }))}
             className={styles.input}
           >
             <option value="">전체</option>
-            <option value="active">활성</option>
-            <option value="cancelled">입고 취소</option>
+            {suppliers.map((s) => (
+              <option key={s.id} value={String(s.id)}>{s.name}</option>
+            ))}
           </select>
         </label>
         <label className={styles.searchLabel}>
@@ -421,15 +444,19 @@ function MaterialInbound() {
               <tr>
                 <th>입고 요청일</th>
                 <th>원자재 업체</th>
-                <th>원자재 종류 개수</th>
-                <th>입고 희망일</th>
-                <th>상태</th>
+                {!isMobile && (
+                  <>
+                    <th>원자재 종류 개수</th>
+                    <th>입고 희망일</th>
+                    <th>상태</th>
+                  </>
+                )}
                 <th>기능</th>
               </tr>
             </thead>
             <tbody>
               {list.length === 0 ? (
-                <tr><td colSpan={6} className={styles.empty}>조회된 입고 요청이 없습니다.</td></tr>
+                <tr><td colSpan={isMobile ? 3 : 6} className={styles.empty}>조회된 입고 요청이 없습니다.</td></tr>
               ) : (
                 list.map((row) => (
                   <tr key={row.id}>
@@ -439,9 +466,13 @@ function MaterialInbound() {
                       </button>
                     </td>
                     <td>{renderCell(row.supplier_name)}</td>
-                    <td>{renderCell(row.material_kind_count)}</td>
-                    <td>{formatDate(row.desired_date)}</td>
-                    <td>{row.status_label ?? '입고 요청'}</td>
+                    {!isMobile && (
+                      <>
+                        <td>{formatQty(row.material_kind_count)}</td>
+                        <td>{formatDate(row.desired_date)}</td>
+                        <td>{row.status_label ?? '입고 요청'}</td>
+                      </>
+                    )}
                     <td>
                       {(row.can_cancel === true || (row.status === 'active' && (row.status_label ?? '') === '입고 요청')) && (
                         <button type="button" className={styles.btnSmall} onClick={() => runAction(row.id, 'cancel')} disabled={!!actionLoading}>
@@ -544,7 +575,7 @@ function MaterialInbound() {
                       {(formData.lines || []).map((l, i) => (
                         <tr key={l.id || i}>
                           <td>{[l.raw_material_kind, l.raw_material_name].filter(Boolean).join(' / ') || l.raw_material_name}</td>
-                          <td>{l.quantity}</td>
+                          <td>{formatQty(l.quantity)}</td>
                           <td>{formData.status === 'cancelled' ? '입고 취소' : (LINE_STATUS_LABEL[l.status] || l.status)}</td>
                           <td>
                             {formData.status !== 'cancelled' && l.status === 'request' && (

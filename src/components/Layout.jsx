@@ -2,13 +2,24 @@ import React, { useState } from 'react';
 import { Outlet, useLocation, Link } from 'react-router-dom';
 import { menuConfig } from '../config/menu';
 import { useAuth } from '../context/AuthContext';
+import { useIsMobile } from '../hooks/useMediaQuery';
 import Footer from './Footer';
 import styles from './Layout.module.css';
 
 function Layout() {
   const location = useLocation();
+  const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { user, isAuthenticated, logout } = useAuth();
+
+  const closeSidebarIfMobile = () => {
+    if (isMobile) setSidebarOpen(false);
+  };
+
+  /** 모바일에서 상단 메뉴 클릭 시 왼쪽 상세 메뉴(사이드바) 열기 */
+  const openSidebarIfMobile = () => {
+    if (isMobile) setSidebarOpen(true);
+  };
 
   const currentGroup = menuConfig.find(
     (g) =>
@@ -41,6 +52,7 @@ function Layout() {
                     ? styles.mainNavItemActive
                     : styles.mainNavItem
                 }
+                onClick={openSidebarIfMobile}
               >
                 {item.label}
               </Link>
@@ -80,6 +92,7 @@ function Layout() {
                           ? styles.sideNavItemActive
                           : styles.sideNavItem
                       }
+                      onClick={closeSidebarIfMobile}
                     >
                       {child.label}
                     </Link>
