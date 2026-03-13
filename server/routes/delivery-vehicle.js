@@ -10,6 +10,7 @@ const router = Router();
 
 const CONFIG_BASE = (process.env.CONFIG_MANAGER_URL || 'https://config-manager.ig-pilot.com').replace(/\/$/, '');
 const CONFIG_API_KEY = process.env.CONFIG_MANAGER_API_KEY || '1df7b7a71fdb47f6b04e41662e7363f1';
+const CONFIG_APP_CODE = process.env.CONFIG_MANAGER_APP_CODE || 'BNK_MES';
 
 /**
  * CAR_MAKER 코드 조회 (ig-config-manager 프록시)
@@ -18,7 +19,7 @@ const CONFIG_API_KEY = process.env.CONFIG_MANAGER_API_KEY || '1df7b7a71fdb47f6b0
 router.get('/', async (req, res) => {
   try {
     const response = await fetch(`${CONFIG_BASE}/api/v1/codes/CAR_MAKER`, {
-      headers: { 'X-API-Key': CONFIG_API_KEY, 'Accept': 'application/json' },
+      headers: { 'X-API-Key': CONFIG_API_KEY, 'X-App-Code': CONFIG_APP_CODE, 'Accept': 'application/json' },
     });
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
