@@ -18,7 +18,6 @@ export const menuConfig = [
     label: '납품 관리',
     path: '/delivery',
     children: [
-      { id: 'delivery-vehicle', label: '완성차 정보', path: '/delivery/vehicle' },
       { id: 'delivery-supplier', label: '납품사 정보', path: '/delivery/supplier' },
       { id: 'delivery-partner', label: '납품사 연계 업체 정보', path: '/delivery/partner' },
       { id: 'delivery-warehouse', label: '납품사 창고 정보', path: '/delivery/warehouse' },
@@ -51,15 +50,6 @@ export const menuConfig = [
       { id: 'material-stock', label: '원자재 재고 관리', path: '/material/stock' },
       { id: 'inventory-product', label: '완제품 재고 관리', path: '/inventory/product' },
       { id: 'inventory-semi', label: '반제품 재고 관리', path: '/inventory/semi' },
-    ],
-  },
-  {
-    id: 'settings',
-    label: '설정',
-    path: '/settings',
-    children: [
-      { id: 'settings-code', label: '코드 관리', path: '/settings/code' },
-      { id: 'settings-template', label: '발송 Template 관리', path: '/settings/template' },
     ],
   },
 ];

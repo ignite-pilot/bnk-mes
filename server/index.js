@@ -12,6 +12,13 @@ import materialSupplierRouter, { listHandler as materialSupplierList } from './r
 import materialWarehouseRouter from './routes/material-warehouse.js';
 import materialStockRouter from './routes/material-stock.js';
 import materialInboundRouter, { exportExcel as materialInboundExportExcel, listHandler as materialInboundList } from './routes/material-inbound.js';
+import deliveryVehicleRouter from './routes/delivery-vehicle.js';
+import deliveryFinishedProductRouter, { listHandler as deliveryFinishedProductList } from './routes/delivery-finished-product.js';
+import deliverySemiProductRouter, { listHandler as deliverySemiProductList } from './routes/delivery-semi-product.js';
+import deliverySupplierRouter, { listHandler as deliverySupplierList } from './routes/delivery-supplier.js';
+import deliveryAffiliateRouter, { listHandler as deliveryAffiliateList } from './routes/delivery-affiliate.js';
+import deliveryWarehouseRouter, { listHandler as deliveryWarehouseList } from './routes/delivery-warehouse.js';
+import deliveryRequestRouter, { listHandler as deliveryRequestList, exportExcel as deliveryRequestExportExcel } from './routes/delivery-request.js';
 import logger from './lib/logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -33,6 +40,21 @@ app.use('/api/material-stock', materialStockRouter);
 app.get('/api/material-inbound/export-excel', materialInboundExportExcel);
 app.get('/api/material-inbound', materialInboundList);
 app.use('/api/material-inbound', materialInboundRouter);
+
+app.use('/api/delivery-vehicles', deliveryVehicleRouter);
+app.get('/api/delivery-finished-products', deliveryFinishedProductList);
+app.use('/api/delivery-finished-products', deliveryFinishedProductRouter);
+app.get('/api/delivery-semi-products', deliverySemiProductList);
+app.use('/api/delivery-semi-products', deliverySemiProductRouter);
+app.get('/api/delivery-suppliers', deliverySupplierList);
+app.use('/api/delivery-suppliers', deliverySupplierRouter);
+app.get('/api/delivery-affiliates', deliveryAffiliateList);
+app.use('/api/delivery-affiliates', deliveryAffiliateRouter);
+app.get('/api/delivery-warehouses', deliveryWarehouseList);
+app.use('/api/delivery-warehouses', deliveryWarehouseRouter);
+app.get('/api/delivery-requests/export-excel', deliveryRequestExportExcel);
+app.get('/api/delivery-requests', deliveryRequestList);
+app.use('/api/delivery-requests', deliveryRequestRouter);
 
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../dist')));

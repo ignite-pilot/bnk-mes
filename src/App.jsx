@@ -12,6 +12,12 @@ import MaterialSupplier from './pages/material/MaterialSupplier';
 import MaterialWarehouse from './pages/material/MaterialWarehouse';
 import MaterialStock from './pages/material/MaterialStock';
 import MaterialInbound from './pages/material/MaterialInbound';
+import DeliveryFinishedProduct from './pages/delivery/DeliveryFinishedProduct';
+import DeliverySemiProduct from './pages/delivery/DeliverySemiProduct';
+import DeliverySupplier from './pages/delivery/DeliverySupplier';
+import DeliveryAffiliate from './pages/delivery/DeliveryAffiliate';
+import DeliveryWarehouse from './pages/delivery/DeliveryWarehouse';
+import DeliveryRequest from './pages/delivery/DeliveryRequest';
 import { menuConfig } from './config/menu';
 
 function App() {
@@ -23,7 +29,14 @@ function App() {
       p.path !== '/material/supplier' &&
       p.path !== '/material/warehouse' &&
       p.path !== '/material/stock' &&
-      p.path !== '/material/inbound'
+      p.path !== '/material/inbound' &&
+      p.path !== '/delivery/vehicle' &&
+      p.path !== '/delivery/product' &&
+      p.path !== '/delivery/semi' &&
+      p.path !== '/delivery/supplier' &&
+      p.path !== '/delivery/partner' &&
+      p.path !== '/delivery/warehouse' &&
+      p.path !== '/delivery/inbound'
   );
 
   return (
@@ -38,6 +51,12 @@ function App() {
           <Route path="material/warehouse" element={<MaterialWarehouse />} />
           <Route path="material/stock" element={<MaterialStock />} />
           <Route path="material/inbound" element={<MaterialInbound />} />
+          <Route path="delivery/product" element={<DeliveryFinishedProduct />} />
+          <Route path="delivery/semi" element={<DeliverySemiProduct />} />
+          <Route path="delivery/supplier" element={<DeliverySupplier />} />
+          <Route path="delivery/partner" element={<DeliveryAffiliate />} />
+          <Route path="delivery/warehouse" element={<DeliveryWarehouse />} />
+          <Route path="delivery/inbound" element={<DeliveryRequest />} />
           {allPaths.map(({ path, title }) => (
             <Route
               key={path}

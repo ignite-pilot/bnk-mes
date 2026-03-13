@@ -23,7 +23,8 @@
     "setup:supplier-manager-email": "node scripts/add-supplier-manager-email.js",
     "setup:supplier-warehouses": "node scripts/create-supplier-warehouses-table.js",
     "setup:material-stock": "node scripts/create-material-stock-tables.js",
-    "setup:material-inbound": "node scripts/create-material-inbound-tables.js"
+    "setup:material-inbound": "node scripts/create-material-inbound-tables.js",
+    "setup:delivery": "node scripts/create-delivery-tables.js"
   },
   "dependencies": {
     "@aws-sdk/client-cloudwatch-logs": "^3.600.0",
