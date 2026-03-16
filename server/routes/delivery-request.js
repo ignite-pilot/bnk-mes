@@ -40,7 +40,7 @@ async function recalculateRequestStatus(requestId) {
   let newStatus;
   if (statuses.every((s) => s === 'requested')) newStatus = 'requested';
   else if (statuses.every((s) => s === 'returned')) newStatus = 'all_returned';
-  else if (statuses.every((s) => s === 'delivered' || s === 'returned')) newStatus = 'completed';
+  else if (statuses.every((s) => s === 'delivered')) newStatus = 'completed';
   else newStatus = 'partial';
   await getPool().query(
     `UPDATE \`${TABLE}\` SET status = ? WHERE id = ?`,
