@@ -31,17 +31,32 @@ function DeliveryFinishedProduct() {
   const [formSaving, setFormSaving] = useState(false);
   const [formError, setFormError] = useState('');
   const [carMakers, setCarMakers] = useState([]);
+  const [vehicleCodes, setVehicleCodes] = useState([]);
+  const [partCodes, setPartCodes] = useState([]);
+  const [colorCodes, setColorCodes] = useState([]);
 
   const userName = user?.name || user?.loginId || '';
 
   const LIST_FETCH_TIMEOUT_MS = 15000;
 
-  /* 완성차 회사 코드 목록 로드 (ig-config-manager) */
+  /* ig-config-manager 코드 목록 로드 */
   useEffect(() => {
     fetch(VEHICLE_API)
       .then((r) => r.json())
       .then((d) => setCarMakers(d.list || []))
       .catch(() => setCarMakers([]));
+    fetch(`${VEHICLE_API}/codes/VEHICLE_CODE`)
+      .then((r) => r.json())
+      .then((d) => setVehicleCodes(d.list || []))
+      .catch(() => setVehicleCodes([]));
+    fetch(`${VEHICLE_API}/codes/PART_CODE`)
+      .then((r) => r.json())
+      .then((d) => setPartCodes(d.list || []))
+      .catch(() => setPartCodes([]));
+    fetch(`${VEHICLE_API}/codes/COLOR_CODE`)
+      .then((r) => r.json())
+      .then((d) => setColorCodes(d.list || []))
+      .catch(() => setColorCodes([]));
   }, []);
 
   const fetchList = useCallback(async () => {
@@ -316,6 +331,11 @@ function DeliveryFinishedProduct() {
     const found = carMakers.find((c) => c.value === val);
     return found ? `${found.name} (${found.value})` : val;
   };
+  const getCodeLabel = (codes, val) => {
+    if (!val) return '-';
+    const found = codes.find((c) => c.value === val);
+    return found ? `${found.name} (${found.value})` : val;
+  };
 
   return (
     <div className={styles.page}>
@@ -570,56 +590,38 @@ function DeliveryFinishedProduct() {
                 </label>
                 <label className={styles.label}>
                   차량 코드 <span className={styles.optional}>(선택)</span>
-                  <input
-                    type="text"
+                  <SelectDropdown
+                    options={vehicleCodes.map((c) => ({ value: c.value, label: `${c.name} (${c.value})` }))}
                     value={formData.vehicle_code}
-                    onChange={(e) => setFormData((f) => ({ ...f, vehicle_code: e.target.value }))}
-                    className={styles.input}
+                    onChange={(val) => {
+                      const found = vehicleCodes.find((c) => c.value === val);
+                      setFormData((f) => ({ ...f, vehicle_code: val, vehicle_name: found?.name || '' }));
+                    }}
+                    placeholder="차량 선택"
                   />
                 </label>
                 <label className={styles.label}>
-                  차량 이름 <span className={styles.optional}>(선택)</span>
-                  <input
-                    type="text"
-                    value={formData.vehicle_name}
-                    onChange={(e) => setFormData((f) => ({ ...f, vehicle_name: e.target.value }))}
-                    className={styles.input}
-                  />
-                </label>
-                <label className={styles.label}>
-                  부위 코드 <span className={styles.optional}>(선택)</span>
-                  <input
-                    type="text"
+                  차량 부위 <span className={styles.optional}>(선택)</span>
+                  <SelectDropdown
+                    options={partCodes.map((c) => ({ value: c.value, label: `${c.name} (${c.value})` }))}
                     value={formData.part_code}
-                    onChange={(e) => setFormData((f) => ({ ...f, part_code: e.target.value }))}
-                    className={styles.input}
+                    onChange={(val) => {
+                      const found = partCodes.find((c) => c.value === val);
+                      setFormData((f) => ({ ...f, part_code: val, part_name: found?.name || '' }));
+                    }}
+                    placeholder="부위 선택"
                   />
                 </label>
                 <label className={styles.label}>
-                  부위 이름 <span className={styles.optional}>(선택)</span>
-                  <input
-                    type="text"
-                    value={formData.part_name}
-                    onChange={(e) => setFormData((f) => ({ ...f, part_name: e.target.value }))}
-                    className={styles.input}
-                  />
-                </label>
-                <label className={styles.label}>
-                  색상 코드 <span className={styles.optional}>(선택)</span>
-                  <input
-                    type="text"
+                  색상 <span className={styles.optional}>(선택)</span>
+                  <SelectDropdown
+                    options={colorCodes.map((c) => ({ value: c.value, label: `${c.name} (${c.value})` }))}
                     value={formData.color_code}
-                    onChange={(e) => setFormData((f) => ({ ...f, color_code: e.target.value }))}
-                    className={styles.input}
-                  />
-                </label>
-                <label className={styles.label}>
-                  색상 이름 <span className={styles.optional}>(선택)</span>
-                  <input
-                    type="text"
-                    value={formData.color_name}
-                    onChange={(e) => setFormData((f) => ({ ...f, color_name: e.target.value }))}
-                    className={styles.input}
+                    onChange={(val) => {
+                      const found = colorCodes.find((c) => c.value === val);
+                      setFormData((f) => ({ ...f, color_code: val, color_name: found?.name || '' }));
+                    }}
+                    placeholder="색상 선택"
                   />
                 </label>
                 <label className={styles.label}>
@@ -673,17 +675,11 @@ function DeliveryFinishedProduct() {
                   <dt>완성차 회사 코드</dt>
                   <dd>{getCarMakerLabel(formData.car_company)}</dd>
                   <dt>차량 코드</dt>
-                  <dd>{renderCell(formData.vehicle_code)}</dd>
-                  <dt>차량 이름</dt>
-                  <dd>{renderCell(formData.vehicle_name)}</dd>
-                  <dt>부위 코드</dt>
-                  <dd>{renderCell(formData.part_code)}</dd>
-                  <dt>부위 이름</dt>
-                  <dd>{renderCell(formData.part_name)}</dd>
-                  <dt>색상 코드</dt>
-                  <dd>{renderCell(formData.color_code)}</dd>
-                  <dt>색상 이름</dt>
-                  <dd>{renderCell(formData.color_name)}</dd>
+                  <dd>{getCodeLabel(vehicleCodes, formData.vehicle_code)}</dd>
+                  <dt>차량 부위</dt>
+                  <dd>{getCodeLabel(partCodes, formData.part_code)}</dd>
+                  <dt>색상</dt>
+                  <dd>{getCodeLabel(colorCodes, formData.color_code)}</dd>
                   <dt>두께</dt>
                   <dd>{renderCell(formData.thickness)}</dd>
                   <dt>폭</dt>
@@ -739,56 +735,38 @@ function DeliveryFinishedProduct() {
                 </label>
                 <label className={styles.label}>
                   차량 코드
-                  <input
-                    type="text"
+                  <SelectDropdown
+                    options={vehicleCodes.map((c) => ({ value: c.value, label: `${c.name} (${c.value})` }))}
                     value={formData.vehicle_code}
-                    onChange={(e) => setFormData((f) => ({ ...f, vehicle_code: e.target.value }))}
-                    className={styles.input}
+                    onChange={(val) => {
+                      const found = vehicleCodes.find((c) => c.value === val);
+                      setFormData((f) => ({ ...f, vehicle_code: val, vehicle_name: found?.name || '' }));
+                    }}
+                    placeholder="차량 선택"
                   />
                 </label>
                 <label className={styles.label}>
-                  차량 이름
-                  <input
-                    type="text"
-                    value={formData.vehicle_name}
-                    onChange={(e) => setFormData((f) => ({ ...f, vehicle_name: e.target.value }))}
-                    className={styles.input}
-                  />
-                </label>
-                <label className={styles.label}>
-                  부위 코드
-                  <input
-                    type="text"
+                  차량 부위
+                  <SelectDropdown
+                    options={partCodes.map((c) => ({ value: c.value, label: `${c.name} (${c.value})` }))}
                     value={formData.part_code}
-                    onChange={(e) => setFormData((f) => ({ ...f, part_code: e.target.value }))}
-                    className={styles.input}
+                    onChange={(val) => {
+                      const found = partCodes.find((c) => c.value === val);
+                      setFormData((f) => ({ ...f, part_code: val, part_name: found?.name || '' }));
+                    }}
+                    placeholder="부위 선택"
                   />
                 </label>
                 <label className={styles.label}>
-                  부위 이름
-                  <input
-                    type="text"
-                    value={formData.part_name}
-                    onChange={(e) => setFormData((f) => ({ ...f, part_name: e.target.value }))}
-                    className={styles.input}
-                  />
-                </label>
-                <label className={styles.label}>
-                  색상 코드
-                  <input
-                    type="text"
+                  색상
+                  <SelectDropdown
+                    options={colorCodes.map((c) => ({ value: c.value, label: `${c.name} (${c.value})` }))}
                     value={formData.color_code}
-                    onChange={(e) => setFormData((f) => ({ ...f, color_code: e.target.value }))}
-                    className={styles.input}
-                  />
-                </label>
-                <label className={styles.label}>
-                  색상 이름
-                  <input
-                    type="text"
-                    value={formData.color_name}
-                    onChange={(e) => setFormData((f) => ({ ...f, color_name: e.target.value }))}
-                    className={styles.input}
+                    onChange={(val) => {
+                      const found = colorCodes.find((c) => c.value === val);
+                      setFormData((f) => ({ ...f, color_code: val, color_name: found?.name || '' }));
+                    }}
+                    placeholder="색상 선택"
                   />
                 </label>
                 <label className={styles.label}>

@@ -1,10 +1,11 @@
 /**
  * 커스텀 셀렉트 드롭다운 (기본 select 대체)
  * - options: { value, label }[]
- * - value: 선택된 값
- * - onChange: (value) => void
+ * - value: 단일 선택 시 string, 다중 선택 시 string[]
+ * - onChange: 단일 선택 시 (value) => void, 다중 선택 시 (values[]) => void
  * - placeholder: 미선택 시 표시 텍스트
  * - searchable: 검색 가능 여부 (기본 false, 옵션 6개 이상이면 자동 true)
+ * - maxSelect: 최대 선택 개수 (기본 1 = 단일 선택, 2 이상 = 체크박스 다중 선택)
  * - style: 외부 wrapper 스타일
  */
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -17,7 +18,9 @@ const ddStyles = {
   trigger: {
     width: '100%',
     padding: '0.4rem 0.6rem',
-    border: '1px solid #cbd5e1',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: '#cbd5e1',
     borderRadius: '4px',
     fontSize: '0.875rem',
     background: '#fff',
@@ -77,6 +80,9 @@ const ddStyles = {
     cursor: 'pointer',
     borderBottom: '1px solid #f1f5f9',
     color: '#334155',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.4rem',
   },
   itemSelected: {
     background: '#eff6ff',
@@ -86,10 +92,28 @@ const ddStyles = {
   itemHover: {
     background: '#f8fafc',
   },
+  itemDisabled: {
+    opacity: 0.4,
+    cursor: 'not-allowed',
+  },
   empty: {
     padding: '0.5rem 0.6rem',
     fontSize: '0.8125rem',
     color: '#94a3b8',
+  },
+  checkbox: {
+    width: '14px',
+    height: '14px',
+    accentColor: '#3b82f6',
+    cursor: 'pointer',
+    flexShrink: 0,
+  },
+  multiInfo: {
+    padding: '0.3rem 0.6rem',
+    fontSize: '0.75rem',
+    color: '#64748b',
+    borderBottom: '1px solid #e2e8f0',
+    background: '#f8fafc',
   },
 };
 
@@ -100,8 +124,10 @@ function SelectDropdown({
   placeholder = '선택',
   searchable,
   disabled = false,
+  maxSelect = 1,
   style,
 }) {
+  const isMulti = maxSelect > 1;
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [hoverIdx, setHoverIdx] = useState(-1);
@@ -109,6 +135,14 @@ function SelectDropdown({
   const searchRef = useRef(null);
 
   const showSearch = searchable !== undefined ? searchable : options.length >= 6;
+
+  // 다중 선택 시 value를 배열로 정규화
+  const selectedValues = useMemo(() => {
+    if (!isMulti) return [];
+    if (Array.isArray(value)) return value;
+    if (value != null && value !== '') return [value];
+    return [];
+  }, [isMulti, value]);
 
   useEffect(() => {
     const handler = (e) => {
@@ -133,15 +167,40 @@ function SelectDropdown({
     return options.filter((o) => String(o.label).toLowerCase().includes(q));
   }, [options, search]);
 
+  // 단일 선택용 라벨
   const selectedLabel = useMemo(() => {
+    if (isMulti) {
+      if (selectedValues.length === 0) return null;
+      const labels = selectedValues.map((v) => {
+        const found = options.find((o) => String(o.value) === String(v));
+        return found ? found.label : v;
+      });
+      return labels.length <= 2 ? labels.join(', ') : `${labels[0]} 외 ${labels.length - 1}건`;
+    }
     const found = options.find((o) => String(o.value) === String(value));
     return found ? found.label : null;
-  }, [options, value]);
+  }, [isMulti, options, value, selectedValues]);
 
-  const handleSelect = (val) => {
+  // 단일 선택
+  const handleSelect = (val, e) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
     onChange(val);
     setOpen(false);
     setSearch('');
+  };
+
+  // 다중 선택 토글
+  const handleToggle = (val) => {
+    const isChecked = selectedValues.includes(val);
+    if (isChecked) {
+      onChange(selectedValues.filter((v) => v !== val));
+    } else {
+      if (selectedValues.length >= maxSelect) return;
+      onChange([...selectedValues, val]);
+    }
   };
 
   const handleKeyDown = (e) => {
@@ -163,7 +222,11 @@ function SelectDropdown({
       setHoverIdx((prev) => Math.max(prev - 1, 0));
     } else if (e.key === 'Enter' && hoverIdx >= 0 && hoverIdx < filtered.length) {
       e.preventDefault();
-      handleSelect(filtered[hoverIdx].value);
+      if (isMulti) {
+        handleToggle(filtered[hoverIdx].value);
+      } else {
+        handleSelect(filtered[hoverIdx].value);
+      }
     }
   };
 
@@ -191,7 +254,12 @@ function SelectDropdown({
         <span style={ddStyles.arrow}>{open ? '▲' : '▼'}</span>
       </button>
       {open && (
-        <div style={ddStyles.panel}>
+        <div style={ddStyles.panel} onMouseDown={(e) => e.preventDefault()} onClick={(e) => e.stopPropagation()}>
+          {isMulti && (
+            <div style={ddStyles.multiInfo}>
+              {selectedValues.length}/{maxSelect}개 선택
+            </div>
+          )}
           {showSearch && (
             <input
               ref={searchRef}
@@ -210,6 +278,33 @@ function SelectDropdown({
               <div style={ddStyles.empty}>
                 {options.length === 0 ? '항목이 없습니다.' : '검색 결과가 없습니다.'}
               </div>
+            ) : isMulti ? (
+              filtered.map((opt, i) => {
+                const isChecked = selectedValues.includes(opt.value);
+                const isMaxed = !isChecked && selectedValues.length >= maxSelect;
+                return (
+                  <div
+                    key={`${opt.value}-${i}`}
+                    style={{
+                      ...ddStyles.item,
+                      ...(isChecked ? ddStyles.itemSelected : {}),
+                      ...(i === hoverIdx && !isMaxed ? ddStyles.itemHover : {}),
+                      ...(isMaxed ? ddStyles.itemDisabled : {}),
+                    }}
+                    onClick={() => { if (!isMaxed || isChecked) handleToggle(opt.value); }}
+                    onMouseEnter={() => setHoverIdx(i)}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      disabled={isMaxed && !isChecked}
+                      readOnly
+                      style={ddStyles.checkbox}
+                    />
+                    {opt.label}
+                  </div>
+                );
+              })
             ) : (
               filtered.map((opt, i) => (
                 <div
@@ -219,7 +314,7 @@ function SelectDropdown({
                     ...(String(opt.value) === String(value) ? ddStyles.itemSelected : {}),
                     ...(i === hoverIdx ? ddStyles.itemHover : {}),
                   }}
-                  onClick={() => handleSelect(opt.value)}
+                  onClick={(e) => handleSelect(opt.value, e)}
                   onMouseEnter={() => setHoverIdx(i)}
                 >
                   {opt.label}

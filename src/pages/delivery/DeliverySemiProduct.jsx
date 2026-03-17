@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 import { useAuth } from '../../context/AuthContext';
+import SelectDropdown from '../../components/SelectDropdown';
 import styles from '../material/MaterialInfo.module.css';
 
 const API = '/api/delivery-semi-products';
+const VEHICLE_API = '/api/delivery-vehicles';
 
 function formatDate(d) {
   if (!d) return '';
@@ -28,10 +30,19 @@ function DeliverySemiProduct() {
   const [formData, setFormData] = useState(null);
   const [formSaving, setFormSaving] = useState(false);
   const [formError, setFormError] = useState('');
+  const [colorCodes, setColorCodes] = useState([]);
 
   const userName = user?.name || user?.loginId || '';
 
   const LIST_FETCH_TIMEOUT_MS = 15000;
+
+  /* ig-config-manager COLOR_CODE 로드 */
+  useEffect(() => {
+    fetch(`${VEHICLE_API}/codes/COLOR_CODE`)
+      .then((r) => r.json())
+      .then((d) => setColorCodes(d.list || []))
+      .catch(() => setColorCodes([]));
+  }, []);
 
   const fetchList = useCallback(async () => {
     setLoading(true);
@@ -280,6 +291,11 @@ function DeliverySemiProduct() {
 
   const renderCell = (v) => (v != null && v !== '' ? String(v) : '-');
   const formatQty = (v) => (v != null && v !== '' && !Number.isNaN(Number(v)) ? String(Math.round(Number(v))) : '-');
+  const getCodeLabel = (codes, val) => {
+    if (!val) return '-';
+    const found = codes.find((c) => c.value === val);
+    return found ? `${found.name} (${found.value})` : val;
+  };
 
   return (
     <div className={styles.page}>
@@ -526,21 +542,15 @@ function DeliverySemiProduct() {
                   />
                 </label>
                 <label className={styles.label}>
-                  색상 코드 <span className={styles.optional}>(선택)</span>
-                  <input
-                    type="text"
+                  색상 <span className={styles.optional}>(선택)</span>
+                  <SelectDropdown
+                    options={colorCodes.map((c) => ({ value: c.value, label: `${c.name} (${c.value})` }))}
                     value={formData.color_code}
-                    onChange={(e) => setFormData((f) => ({ ...f, color_code: e.target.value }))}
-                    className={styles.input}
-                  />
-                </label>
-                <label className={styles.label}>
-                  색상 이름 <span className={styles.optional}>(선택)</span>
-                  <input
-                    type="text"
-                    value={formData.color_name}
-                    onChange={(e) => setFormData((f) => ({ ...f, color_name: e.target.value }))}
-                    className={styles.input}
+                    onChange={(val) => {
+                      const found = colorCodes.find((c) => c.value === val);
+                      setFormData((f) => ({ ...f, color_code: val, color_name: found?.name || '' }));
+                    }}
+                    placeholder="색상 선택"
                   />
                 </label>
                 <label className={styles.label}>
@@ -591,10 +601,8 @@ function DeliverySemiProduct() {
                   <dd>{renderCell(formData.name)}</dd>
                   <dt>반제품 코드</dt>
                   <dd>{renderCell(formData.code)}</dd>
-                  <dt>색상 코드</dt>
-                  <dd>{renderCell(formData.color_code)}</dd>
-                  <dt>색상 이름</dt>
-                  <dd>{renderCell(formData.color_name)}</dd>
+                  <dt>색상</dt>
+                  <dd>{getCodeLabel(colorCodes, formData.color_code)}</dd>
                   <dt>두께</dt>
                   <dd>{renderCell(formData.thickness)}</dd>
                   <dt>폭</dt>
@@ -640,21 +648,15 @@ function DeliverySemiProduct() {
                   />
                 </label>
                 <label className={styles.label}>
-                  색상 코드
-                  <input
-                    type="text"
+                  색상
+                  <SelectDropdown
+                    options={colorCodes.map((c) => ({ value: c.value, label: `${c.name} (${c.value})` }))}
                     value={formData.color_code}
-                    onChange={(e) => setFormData((f) => ({ ...f, color_code: e.target.value }))}
-                    className={styles.input}
-                  />
-                </label>
-                <label className={styles.label}>
-                  색상 이름
-                  <input
-                    type="text"
-                    value={formData.color_name}
-                    onChange={(e) => setFormData((f) => ({ ...f, color_name: e.target.value }))}
-                    className={styles.input}
+                    onChange={(val) => {
+                      const found = colorCodes.find((c) => c.value === val);
+                      setFormData((f) => ({ ...f, color_code: val, color_name: found?.name || '' }));
+                    }}
+                    placeholder="색상 선택"
                   />
                 </label>
                 <label className={styles.label}>
