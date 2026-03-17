@@ -5,6 +5,7 @@ import { useDaumPostcode } from '../../hooks/useDaumPostcode';
 import ItemSelectPopup from '../../components/ItemSelectPopup';
 import formatPhone, { formatPhoneInput, stripPhone } from '../../utils/formatPhone';
 import styles from '../material/MaterialInfo.module.css';
+import dtStyles from './DeliveryTable.module.css';
 
 const API = '/api/delivery-suppliers';
 const FINISHED_PRODUCT_API = '/api/delivery-finished-products';
@@ -439,18 +440,18 @@ function DeliverySupplier() {
         <p className={styles.loading}>조회 중...</p>
       ) : (
         <div className={styles.tableWrap}>
-          <table className={styles.table}>
+          <table className={`${styles.table} ${dtStyles.fixedTable}`}>
             <thead>
               <tr>
-                <th>납품처 이름</th>
+                <th style={{ width: isMobile ? '40%' : '25%' }}>납품처 이름</th>
                 {!isMobile && (
                   <>
-                    <th>주소</th>
-                    <th>담당자</th>
+                    <th style={{ width: '30%' }}>주소</th>
+                    <th style={{ width: '15%' }}>담당자</th>
                   </>
                 )}
-                <th>담당자 연락처</th>
-                <th>기능</th>
+                <th style={{ width: isMobile ? '35%' : '15%' }}>담당자 연락처</th>
+                <th style={{ width: isMobile ? '25%' : '15%' }}>기능</th>
               </tr>
             </thead>
             <tbody>

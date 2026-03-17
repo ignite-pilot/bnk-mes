@@ -3,6 +3,7 @@ import { useIsMobile } from '../../hooks/useMediaQuery';
 import { useAuth } from '../../context/AuthContext';
 import SelectDropdown from '../../components/SelectDropdown';
 import styles from '../material/MaterialInfo.module.css';
+import dtStyles from './DeliveryTable.module.css';
 
 const API = '/api/delivery-semi-products';
 const VEHICLE_API = '/api/delivery-vehicles';
@@ -366,20 +367,20 @@ function DeliverySemiProduct() {
         <p className={styles.loading}>조회 중...</p>
       ) : (
         <div className={styles.tableWrap}>
-          <table className={styles.table}>
+          <table className={`${styles.table} ${dtStyles.fixedTable}`}>
             <thead>
               <tr>
-                <th>반제품 이름</th>
-                <th>반제품 코드</th>
+                <th style={{ width: isMobile ? '35%' : '20%' }}>반제품 이름</th>
+                <th style={{ width: isMobile ? '35%' : '18%' }}>반제품 코드</th>
                 {!isMobile && (
                   <>
-                    <th>색상 이름</th>
-                    <th>두께</th>
-                    <th>폭</th>
-                    <th>길이</th>
+                    <th style={{ width: '18%' }}>색상 이름</th>
+                    <th style={{ width: '12%' }}>두께</th>
+                    <th style={{ width: '10%' }}>폭</th>
+                    <th style={{ width: '10%' }}>길이</th>
                   </>
                 )}
-                <th>기능</th>
+                <th style={{ width: isMobile ? '30%' : '12%' }}>기능</th>
               </tr>
             </thead>
             <tbody>

@@ -5,6 +5,7 @@ import { useDaumPostcode } from '../../hooks/useDaumPostcode';
 import formatPhone, { formatPhoneInput, stripPhone } from '../../utils/formatPhone';
 import SelectDropdown from '../../components/SelectDropdown';
 import styles from '../material/MaterialInfo.module.css';
+import dtStyles from './DeliveryTable.module.css';
 
 const API = '/api/delivery-affiliates';
 const SUPPLIER_API = '/api/delivery-suppliers';
@@ -387,20 +388,20 @@ function DeliveryAffiliate() {
         <p className={styles.loading}>조회 중...</p>
       ) : (
         <div className={styles.tableWrap}>
-          <table className={styles.table}>
+          <table className={`${styles.table} ${dtStyles.fixedTable}`}>
             <thead>
               <tr>
-                <th>연계 업체 이름</th>
+                <th style={{ width: isMobile ? '40%' : '20%' }}>연계 업체 이름</th>
                 {!isMobile && (
                   <>
-                    <th>납품사 이름</th>
-                    <th>주소</th>
-                    <th>담당자</th>
-                    <th>담당자 연락처</th>
+                    <th style={{ width: '15%' }}>납품사 이름</th>
+                    <th style={{ width: '25%' }}>주소</th>
+                    <th style={{ width: '12%' }}>담당자</th>
+                    <th style={{ width: '15%' }}>담당자 연락처</th>
                   </>
                 )}
-                {isMobile && <th>담당자 연락처</th>}
-                <th>기능</th>
+                {isMobile && <th style={{ width: '35%' }}>담당자 연락처</th>}
+                <th style={{ width: isMobile ? '25%' : '13%' }}>기능</th>
               </tr>
             </thead>
             <tbody>

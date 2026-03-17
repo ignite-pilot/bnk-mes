@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 import { useAuth } from '../../context/AuthContext';
 import styles from '../material/MaterialInfo.module.css';
+import dtStyles from './DeliveryTable.module.css';
 import SelectDropdown from '../../components/SelectDropdown';
 
 const API = '/api/delivery-requests';
@@ -683,7 +684,7 @@ function DeliveryRequest() {
         <p className={styles.loading}>조회 중...</p>
       ) : (
         <div className={styles.tableWrap}>
-          <table className={styles.table} style={{ tableLayout: 'fixed' }}>
+          <table className={`${styles.table} ${dtStyles.fixedTable}`}>
             <colgroup>
               {isMobile ? (
                 <>
@@ -904,14 +905,14 @@ function DeliveryRequest() {
                 {/* Items table */}
                 <h3 style={{ marginTop: '1rem', marginBottom: '0.5rem', fontSize: '0.9375rem' }}>품목</h3>
                 <div className={styles.tableWrap}>
-                  <table className={styles.table}>
+                  <table className={`${styles.table} ${dtStyles.fixedTable}`}>
                     <thead>
                       <tr>
-                        <th>유형</th>
-                        <th>제품명</th>
-                        <th>수량</th>
-                        <th>납품 상태</th>
-                        <th>기능</th>
+                        <th style={{ width: '12%' }}>유형</th>
+                        <th style={{ width: '30%' }}>제품명</th>
+                        <th style={{ width: '13%' }}>수량</th>
+                        <th style={{ width: '15%' }}>납품 상태</th>
+                        <th style={{ width: '30%' }}>기능</th>
                       </tr>
                     </thead>
                     <tbody>

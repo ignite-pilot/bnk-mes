@@ -5,6 +5,7 @@ import { useDaumPostcode } from '../../hooks/useDaumPostcode';
 import ItemSelectPopup from '../../components/ItemSelectPopup';
 import SelectDropdown from '../../components/SelectDropdown';
 import styles from '../material/MaterialInfo.module.css';
+import dtStyles from './DeliveryTable.module.css';
 
 const API = '/api/delivery-warehouses';
 const SUPPLIER_API = '/api/delivery-suppliers';
@@ -411,20 +412,20 @@ function DeliveryWarehouse() {
         <p className={styles.loading}>조회 중...</p>
       ) : (
         <div className={styles.tableWrap}>
-          <table className={styles.table}>
+          <table className={`${styles.table} ${dtStyles.fixedTable}`}>
             <thead>
               <tr>
-                {!isMobile && <th>보유 납품사</th>}
-                <th>창고 이름</th>
-                {isMobile && <th>보유 납품사</th>}
+                {!isMobile && <th style={{ width: '18%' }}>보유 납품사</th>}
+                <th style={{ width: isMobile ? '35%' : '22%' }}>창고 이름</th>
+                {isMobile && <th style={{ width: '35%' }}>보유 납품사</th>}
                 {!isMobile && (
                   <>
-                    <th>주소</th>
-                    <th>수정일자</th>
-                    <th>수정자</th>
+                    <th style={{ width: '28%' }}>주소</th>
+                    <th style={{ width: '12%' }}>수정일자</th>
+                    <th style={{ width: '10%' }}>수정자</th>
                   </>
                 )}
-                <th>기능</th>
+                <th style={{ width: isMobile ? '30%' : '10%' }}>기능</th>
               </tr>
             </thead>
             <tbody>

@@ -1,0 +1,11 @@
+/* 납품 관련 페이지 테이블 고정 레이아웃 */
+.fixedTable {
+  table-layout: fixed;
+}
+
+.fixedTable th,
+.fixedTable td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
