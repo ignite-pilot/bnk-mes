@@ -1,0 +1,25 @@
+{
+  "sourceReport": "scripts/last-finished-product-batch-report-retry.json",
+  "sourceFile": "/Users/ignite/Downloads/완제품_빈셀채움.xlsx",
+  "failedInSourceReport": 23,
+  "retriedInserted": 21,
+  "stillFailed": 2,
+  "failures": [
+    {
+      "row": 333,
+      "vehicleCode": "*RG3 EV 통합 규격외 추가 품목 별도 정리",
+      "partCode": "CTR 2CVT",
+      "colorCode": "OVS",
+      "affiliateName": "공용",
+      "reason": "차량코드 미매칭: *RG3 EV 통합 규격외 추가 품목 별도 정리"
+    },
+    {
+      "row": 334,
+      "vehicleCode": "차종",
+      "partCode": "부위",
+      "colorCode": "칼라",
+      "affiliateName": "업체",
+      "reason": "차량코드 미매칭: 차종; 차량부위 미매칭: 부위; 색상 미매칭: 칼라; 연계업체 미매칭: 업체"
+    }
+  ]
+}

@@ -23,7 +23,6 @@ export const menuConfig = [
       { id: 'delivery-warehouse', label: '납품사 창고 정보', path: '/delivery/warehouse' },
       { id: 'delivery-product', label: '완제품 정보', path: '/delivery/product' },
       { id: 'delivery-semi', label: '반제품 정보', path: '/delivery/semi' },
-      { id: 'delivery-stock', label: '납품사 재고 관리', path: '/delivery/stock' },
       { id: 'delivery-inbound', label: '완제품 입고요청/납품 관리', path: '/delivery/inbound' },
     ],
   },
@@ -48,6 +47,7 @@ export const menuConfig = [
     children: [
       { id: 'inventory-warehouse', label: '비엔케이 재고 창고 정보', path: '/inventory/warehouse' },
       { id: 'material-stock', label: '원자재 재고 관리', path: '/material/stock' },
+      { id: 'delivery-stock', label: '납품사 재고 관리', path: '/delivery/stock' },
       { id: 'inventory-product', label: '완제품 재고 관리', path: '/inventory/product' },
       { id: 'inventory-semi', label: '반제품 재고 관리', path: '/inventory/semi' },
     ],

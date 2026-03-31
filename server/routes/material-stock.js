@@ -6,7 +6,7 @@
 import { Router } from 'express';
 import { getPool } from '../lib/db.js';
 import logger from '../lib/logger.js';
-import { toStartOfDayString, toEndOfDayString } from '../lib/dateUtils.js';
+import { optionalSqlDateRange } from '../lib/dateUtils.js';
 
 const router = Router();
 const SNAPSHOTS_TABLE = 'stock_snapshots';
@@ -16,13 +16,6 @@ const SUPPLIER_WAREHOUSES_TABLE = 'supplier_warehouses';
 const SUPPLIERS_TABLE = 'raw_material_suppliers';
 const RAW_MATERIALS_TABLE = 'raw_materials';
 const TYPES_TABLE = 'material_types';
-
-function defaultDateRange() {
-  const end = new Date();
-  const start = new Date();
-  start.setDate(start.getDate() - 7);
-  return { start, end };
-}
 
 function getRiskLevel(quantity, safeStock, snapshotType) {
   const q = Number(quantity) || 0;
@@ -60,12 +53,13 @@ router.get('/bnk-warehouses', async (req, res) => {
 router.get('/export-excel', async (req, res) => {
   try {
     const { type = '', supplierId = '', warehouseName = '', rawMaterialIds = '', startDate, endDate } = req.query;
-    const { start, end } = defaultDateRange();
-    const fromStr = toStartOfDayString(startDate ? new Date(startDate) : start);
-    const toStr = toEndOfDayString(endDate ? new Date(endDate) : end);
-
-    let where = "WHERE ss.deleted = 'N' AND ss.stock_date >= ? AND ss.stock_date <= ?";
-    const params = [fromStr, toStr];
+    const range = optionalSqlDateRange(startDate, endDate);
+    let where = "WHERE ss.deleted = 'N'";
+    const params = [];
+    if (range) {
+      where += ' AND ss.stock_date >= ? AND ss.stock_date <= ?';
+      params.push(range.from, range.to);
+    }
     if (type === 'supplier') {
       where += " AND ss.snapshot_type = 'supplier'";
     } else if (type === 'bnk') {
@@ -148,14 +142,16 @@ function toDateString(d) {
 router.get('/', async (req, res) => {
   try {
     const { type = '', supplierId = '', warehouseName = '', rawMaterialIds = '', startDate, endDate, page = 1, limit = 20 } = req.query;
-    const { start, end } = defaultDateRange();
-    const fromStr = toStartOfDayString(startDate ? new Date(startDate) : start);
-    const toStr = toEndOfDayString(endDate ? new Date(endDate) : end);
+    const range = optionalSqlDateRange(startDate, endDate);
     const offset = (Math.max(1, parseInt(page, 10)) - 1) * Math.min(100, Math.max(1, parseInt(limit, 10)));
     const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10)));
 
-    let where = "WHERE ss.deleted = 'N' AND ss.stock_date >= ? AND ss.stock_date <= ?";
-    const params = [fromStr, toStr];
+    let where = "WHERE ss.deleted = 'N'";
+    const params = [];
+    if (range) {
+      where += ' AND ss.stock_date >= ? AND ss.stock_date <= ?';
+      params.push(range.from, range.to);
+    }
     if (type === 'supplier') where += " AND ss.snapshot_type = 'supplier'";
     else if (type === 'bnk') where += " AND ss.snapshot_type = 'bnk'";
     const materialIds = rawMaterialIds

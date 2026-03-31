@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import MaterialWarehouse from './MaterialWarehouse';
 
 vi.mock('../../context/AuthContext', () => ({
@@ -31,6 +31,8 @@ describe('MaterialWarehouse', () => {
     expect(screen.getByRole('heading', { name: /원자재 업체 창고 정보/ })).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/검색/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /검색/ })).toBeInTheDocument();
+    expect(screen.queryByText(/기간\(시작\)/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/기간\(종료\)/)).not.toBeInTheDocument();
   });
 
   it('등록·엑셀 다운로드 버튼을 보여준다', async () => {
@@ -57,5 +59,19 @@ describe('MaterialWarehouse', () => {
     expect(screen.getByRole('table')).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: /원자재 공급 업체/ })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: /창고 이름/ })).toBeInTheDocument();
+  });
+
+  it('등록 폼에서 주소를 선택값으로 표시한다', async () => {
+    global.fetch.mockImplementation((url) => {
+      if (String(url).includes('/material-warehouses?')) {
+        return Promise.resolve({ ok: true, json: async () => ({ list: [], total: 0 }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ list: [] }) });
+    });
+    render(<MaterialWarehouse />);
+    fireEvent.click(screen.getByRole('button', { name: /등록/ }));
+    await waitFor(() => {
+      expect(screen.getAllByText((_, element) => element?.textContent?.includes('주소 (선택)')).length).toBeGreaterThan(0);
+    });
   });
 });

@@ -1,7 +1,7 @@
 /**
  * 원자재 입고 요청/입고 관리 (원자재.md, 기본규칙.md)
  * - Tab: 입고 요청 목록 / 입고 상세 현황
- * - 검색: 원자재 N개, 입고 상태, 기간(기본 1주)
+ * - 검색: 원자재 N개, 입고 상태, 기간(선택 시에만 필터)
  * - 등록: 업체, 입고 희망일, 원자재 N개
  * - 보기, 취소, 전체 입고/반품, 라인별 입고/반품
  */
@@ -19,13 +19,6 @@ function formatDate(d) {
   if (!d) return '';
   const dt = new Date(d);
   return dt.toISOString().slice(0, 10);
-}
-
-function defaultDateRange() {
-  const end = new Date();
-  const start = new Date();
-  start.setDate(start.getDate() - 7);
-  return { startDate: formatDate(start), endDate: formatDate(end) };
 }
 
 const PAGE_SIZES = [10, 15, 20, 50, 100];
@@ -57,7 +50,8 @@ function MaterialInbound() {
     rawMaterialIds: [],
     inboundStatus: '',
     supplierId: '',
-    ...defaultDateRange(),
+    startDate: '',
+    endDate: '',
   });
   const isMobile = useIsMobile();
   const [suppliers, setSuppliers] = useState([]);
@@ -162,7 +156,8 @@ function MaterialInbound() {
     rawMaterialIds: [],
     inboundStatus: '',
     supplierId: '',
-    ...defaultDateRange(),
+    startDate: '',
+    endDate: '',
   };
   const handleResetSearch = () => {
     setSearch(initialSearch);

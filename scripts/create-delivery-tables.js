@@ -55,8 +55,9 @@ async function main() {
     await conn.query(`
       CREATE TABLE IF NOT EXISTS delivery_finished_products (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        name VARCHAR(200) NOT NULL COMMENT '완제품 이름',
-        code VARCHAR(100) NOT NULL COMMENT '완제품 코드',
+        name VARCHAR(200) DEFAULT NULL COMMENT '완제품 이름',
+        code VARCHAR(100) DEFAULT NULL COMMENT '완제품 코드',
+        affiliate_id INT DEFAULT NULL COMMENT '납품사 연계 업체',
         car_company VARCHAR(100) DEFAULT NULL COMMENT '완성차 회사 코드',
         vehicle_code VARCHAR(100) DEFAULT NULL COMMENT '차량 코드',
         vehicle_name VARCHAR(200) DEFAULT NULL COMMENT '차량 이름',
@@ -66,7 +67,9 @@ async function main() {
         color_name VARCHAR(200) DEFAULT NULL COMMENT '색상 이름',
         thickness DECIMAL(12,4) DEFAULT NULL COMMENT '두께',
         width DECIMAL(12,4) DEFAULT NULL COMMENT '폭',
+        two_width DECIMAL(12,4) DEFAULT NULL COMMENT '두폭',
         \`length\` DECIMAL(12,4) DEFAULT NULL COMMENT '길이',
+        ratio DECIMAL(4,1) DEFAULT NULL COMMENT '배율',
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         updated_by VARCHAR(100) DEFAULT NULL,
@@ -74,6 +77,7 @@ async function main() {
         INDEX idx_deleted (deleted),
         INDEX idx_name (name),
         INDEX idx_code (code),
+        INDEX idx_affiliate_id (affiliate_id),
         INDEX idx_updated_at (updated_at)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='완제품 정보';
     `);
@@ -83,13 +87,17 @@ async function main() {
     await conn.query(`
       CREATE TABLE IF NOT EXISTS delivery_semi_products (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        name VARCHAR(200) NOT NULL COMMENT '반제품 이름',
-        code VARCHAR(100) NOT NULL COMMENT '반제품 코드',
+        name VARCHAR(200) DEFAULT NULL COMMENT '반제품 이름',
+        code VARCHAR(100) DEFAULT NULL COMMENT '반제품 코드',
+        semi_product_type VARCHAR(100) DEFAULT NULL COMMENT '반제품 종류 코드(SEMI_PRODUCT)',
+        vehicle_code VARCHAR(100) DEFAULT NULL COMMENT '차량 코드(VEHICLE_CODE)',
+        part_code VARCHAR(100) DEFAULT NULL COMMENT '부위 코드(PART_CODE)',
+        supplier_name VARCHAR(200) DEFAULT NULL COMMENT '납품 업체',
+        ratio DECIMAL(12,4) DEFAULT NULL COMMENT '배율',
         color_code VARCHAR(100) DEFAULT NULL COMMENT '색상 코드',
         color_name VARCHAR(200) DEFAULT NULL COMMENT '색상 이름',
         thickness DECIMAL(12,4) DEFAULT NULL,
         width DECIMAL(12,4) DEFAULT NULL,
-        \`length\` DECIMAL(12,4) DEFAULT NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         updated_by VARCHAR(100) DEFAULT NULL,
@@ -97,6 +105,9 @@ async function main() {
         INDEX idx_deleted (deleted),
         INDEX idx_name (name),
         INDEX idx_code (code),
+        INDEX idx_semi_product_type (semi_product_type),
+        INDEX idx_vehicle_code (vehicle_code),
+        INDEX idx_part_code (part_code),
         INDEX idx_updated_at (updated_at)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='반제품 정보';
     `);

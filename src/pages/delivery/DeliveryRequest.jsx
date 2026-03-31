@@ -48,6 +48,8 @@ function DeliveryRequest() {
   const [search, setSearch] = useState({ supplierName: '' });
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState('add'); // add | view | edit
+  /** edit 전용: full = 품목 포함 수정, header = 납품사·요청일·희망일만 (납품 진행 후) */
+  const [editScope, setEditScope] = useState('full');
   const [formData, setFormData] = useState(null);
   const [formSaving, setFormSaving] = useState(false);
   const [formError, setFormError] = useState('');
@@ -130,6 +132,11 @@ function DeliveryRequest() {
     return p ? p.name : '-';
   };
 
+  const allItemsRequested = (items) => {
+    if (!items?.length) return false;
+    return items.every((it) => it.item_status === 'requested');
+  };
+
   /* ── 납품사별 제품 필터링 ── */
   const fetchSupplierProducts = useCallback(async (supplierId) => {
     if (!supplierId) {
@@ -162,6 +169,7 @@ function DeliveryRequest() {
 
   /* ── ADD ── */
   const openAdd = () => {
+    setEditScope('full');
     setFormMode('add');
     setFormData({
       supplier_id: '',
@@ -204,8 +212,11 @@ function DeliveryRequest() {
     }
   };
 
-  /* ── EDIT ── */
+  /* ── EDIT (단건 상세 row: items 포함 API 응답 기준) ── */
   const openEdit = (row) => {
+    const scope =
+      row.status === 'requested' && allItemsRequested(row.items || []) ? 'full' : 'header';
+    setEditScope(scope);
     setFormMode('edit');
     setFormData({
       id: row.id,
@@ -239,6 +250,7 @@ function DeliveryRequest() {
   const closeForm = () => {
     setFormOpen(false);
     setFormData(null);
+    setEditScope('full');
     setFormError('');
     fetchList();
   };
@@ -333,6 +345,10 @@ function DeliveryRequest() {
   /* ── SUBMIT EDIT ── */
   const handleSubmitEdit = async (e) => {
     e.preventDefault();
+    if (!userName || String(userName).trim() === '') {
+      setFormError('수정자는 필수입니다. 로그인 후 수정해 주세요.');
+      return;
+    }
     if (!formData.supplier_id) {
       setFormError('납품사는 필수입니다.');
       return;
@@ -345,39 +361,50 @@ function DeliveryRequest() {
       setFormError('납품 희망일은 필수입니다.');
       return;
     }
-    if (!formData.items?.length) {
-      setFormError('품목을 최소 1개 추가해 주세요.');
-      return;
-    }
-    for (let i = 0; i < formData.items.length; i++) {
-      const it = formData.items[i];
-      if (!it.product_id) {
-        setFormError(`품목 ${i + 1}번: 제품을 선택해 주세요.`);
+    if (editScope === 'full') {
+      if (!formData.items?.length) {
+        setFormError('품목을 최소 1개 추가해 주세요.');
         return;
       }
-      if (!it.quantity || Number(it.quantity) < 1) {
-        setFormError(`품목 ${i + 1}번: 수량은 1 이상이어야 합니다.`);
-        return;
+      for (let i = 0; i < formData.items.length; i++) {
+        const it = formData.items[i];
+        if (!it.product_id) {
+          setFormError(`품목 ${i + 1}번: 제품을 선택해 주세요.`);
+          return;
+        }
+        if (!it.quantity || Number(it.quantity) < 1) {
+          setFormError(`품목 ${i + 1}번: 수량은 1 이상이어야 합니다.`);
+          return;
+        }
       }
     }
     setFormSaving(true);
     setFormError('');
     try {
+      const body =
+        editScope === 'header'
+          ? {
+              supplier_id: formData.supplier_id,
+              request_date: formData.request_date,
+              desired_date: formData.desired_date,
+              updatedBy: userName,
+            }
+          : {
+              supplier_id: formData.supplier_id,
+              request_date: formData.request_date,
+              desired_date: formData.desired_date,
+              items: formData.items.map((it) => ({
+                id: it.id,
+                item_type: it.item_type,
+                product_id: it.product_id,
+                quantity: Number(it.quantity),
+              })),
+              updatedBy: userName,
+            };
       const res = await fetch(`${API}/${formData.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          supplier_id: formData.supplier_id,
-          request_date: formData.request_date,
-          desired_date: formData.desired_date,
-          items: formData.items.map((it) => ({
-            id: it.id,
-            item_type: it.item_type,
-            product_id: it.product_id,
-            quantity: Number(it.quantity),
-          })),
-          updatedBy: userName,
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -501,11 +528,6 @@ function DeliveryRequest() {
 
   const renderCell = (v) => (v != null && v !== '' ? String(v) : '-');
 
-  const allItemsRequested = (items) => {
-    if (!items?.length) return false;
-    return items.every((it) => it.item_status === 'requested');
-  };
-
   /* ── Items form (add / edit) ── */
   const itemCardStyle = {
     border: '1px solid #e2e8f0',
@@ -623,6 +645,45 @@ function DeliveryRequest() {
         </div>
       )}
     </div>
+  );
+
+  const renderItemsReadOnlyBlock = () => (
+    <>
+      <p className={styles.optionalHint}>
+        일부 품목이 납품·반품 처리된 요청입니다. 품목은 변경할 수 없으며 납품사·요청일·희망일만 수정할 수 있습니다.
+      </p>
+      <h3 style={{ marginTop: '0.75rem', marginBottom: '0.5rem', fontSize: '0.9375rem' }}>품목</h3>
+      <div className={styles.tableWrap}>
+        <table className={`${styles.table} ${dtStyles.fixedTable}`}>
+          <thead>
+            <tr>
+              <th style={{ width: '15%' }}>유형</th>
+              <th style={{ width: '40%' }}>제품명</th>
+              <th style={{ width: '15%' }}>수량</th>
+              <th style={{ width: '30%' }}>납품 상태</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(formData.items || []).length === 0 ? (
+              <tr>
+                <td colSpan={4} className={styles.empty}>
+                  품목이 없습니다.
+                </td>
+              </tr>
+            ) : (
+              (formData.items || []).map((item) => (
+                <tr key={item.id ?? `${item.product_id}-${item.item_type}`}>
+                  <td>{item.item_type === 'finished' ? '완제품' : '반제품'}</td>
+                  <td>{getProductName(item.item_type, item.product_id)}</td>
+                  <td>{item.quantity != null ? String(item.quantity) : '-'}</td>
+                  <td>{ITEM_STATUS_LABELS[item.item_status] || renderCell(item.item_status)}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 
   return (
@@ -753,7 +814,7 @@ function DeliveryRequest() {
                       </>
                     )}
                     <td>
-                      {row.status === 'requested' && (
+                      {row.status !== 'cancelled' && (
                         <button
                           type="button"
                           className={styles.btnSmall}
@@ -828,7 +889,8 @@ function DeliveryRequest() {
             <h2 id="request-form-title" className={styles.modalTitle}>
               {formMode === 'add' && '납품 요청 등록'}
               {formMode === 'view' && '납품 요청 상세'}
-              {formMode === 'edit' && '납품 요청 수정'}
+              {formMode === 'edit' && editScope === 'header' && '납품 요청 수정 (납품사·일자)'}
+              {formMode === 'edit' && editScope === 'full' && '납품 요청 수정'}
             </h2>
             {formError && <div className={styles.error}>{formError}</div>}
 
@@ -959,7 +1021,7 @@ function DeliveryRequest() {
                 </div>
 
                 <div className={styles.formActions}>
-                  {allItemsRequested(formData.items) && formData.status !== 'cancelled' && (
+                  {formData.status !== 'cancelled' && (
                     <button type="button" className={styles.btnPrimary} onClick={() => openEdit(formData)}>
                       수정
                     </button>
@@ -1015,7 +1077,7 @@ function DeliveryRequest() {
                     required
                   />
                 </label>
-                {renderItemsForm()}
+                {editScope === 'full' ? renderItemsForm() : renderItemsReadOnlyBlock()}
                 <div className={styles.formActions}>
                   <button type="submit" className={styles.btnPrimary} disabled={formSaving}>
                     {formSaving ? '수정 중...' : '수정'}

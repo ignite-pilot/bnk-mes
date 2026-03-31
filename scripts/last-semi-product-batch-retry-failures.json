@@ -1,0 +1,11 @@
+{
+  "mode": "retry-failed-rows-only",
+  "sourceFile": "/Users/ignite/Documents/제조AX/비엔케이/bnk반제품.xlsx",
+  "sheetName": "3. 하지 입고",
+  "failuresInput": "scripts/last-semi-product-batch-failures.json",
+  "retriedRows": 6,
+  "inserted": 6,
+  "stillFailed": 0,
+  "semiProductType": "UNDERLAYER",
+  "failures": []
+}

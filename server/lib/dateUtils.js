@@ -72,6 +72,34 @@ function toEndOfDayString(d) {
   return s ? `${s} 23:59:59` : null;
 }
 
+/**
+ * 목록 검색: 시작·종료가 모두 비어 있으면 null (날짜 SQL 조건 없음).
+ * 시작만: 해당일 ~ 오늘 끝, 종료만: 1970-01-01 ~ 해당일 끝, 둘 다: 각각 시작·끝.
+ * @param {string|undefined|null} startDate
+ * @param {string|undefined|null} endDate
+ * @returns {{ from: string, to: string } | null }
+ */
+function optionalSqlDateRange(startDate, endDate) {
+  const sTrim = startDate != null && String(startDate).trim() !== '' ? String(startDate).trim() : '';
+  const eTrim = endDate != null && String(endDate).trim() !== '' ? String(endDate).trim() : '';
+  if (!sTrim && !eTrim) return null;
+  const now = new Date();
+  let fromStr;
+  let toStr;
+  if (sTrim && eTrim) {
+    fromStr = toStartOfDayString(new Date(sTrim));
+    toStr = toEndOfDayString(new Date(eTrim));
+  } else if (sTrim) {
+    fromStr = toStartOfDayString(new Date(sTrim));
+    toStr = toEndOfDayString(now);
+  } else {
+    fromStr = toStartOfDayString(new Date('1970-01-01'));
+    toStr = toEndOfDayString(new Date(eTrim));
+  }
+  if (!fromStr || !toStr) return null;
+  return { from: fromStr, to: toStr };
+}
+
 export {
   startOfDay,
   endOfDay,
@@ -79,4 +107,5 @@ export {
   toDateString,
   toStartOfDayString,
   toEndOfDayString,
+  optionalSqlDateRange,
 };

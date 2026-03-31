@@ -4,7 +4,7 @@
   "description": "BNS 생산 관리 시스템",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev": "node server/index.js",
     "dev:server": "node server/index.js",
     "dev:client": "vite",
     "build": "vite build",
@@ -19,12 +19,25 @@
     "setup:raw-materials": "node scripts/create-raw-materials-table.js",
     "setup:material-types": "node scripts/create-material-types-table.js",
     "setup:material-suppliers": "node scripts/create-material-suppliers-table.js",
+    "setup:supplier-raw-material-types": "node scripts/create-supplier-raw-material-types-table.js",
     "setup:supplier-address-fields": "node scripts/add-supplier-address-fields.js",
     "setup:supplier-manager-email": "node scripts/add-supplier-manager-email.js",
     "setup:supplier-warehouses": "node scripts/create-supplier-warehouses-table.js",
     "setup:material-stock": "node scripts/create-material-stock-tables.js",
     "setup:material-inbound": "node scripts/create-material-inbound-tables.js",
-    "setup:delivery": "node scripts/create-delivery-tables.js"
+    "setup:delivery": "node scripts/create-delivery-tables.js",
+    "db:purge-delivery-requests": "node scripts/purge-delivery-requests-hard-delete.js",
+    "migrate:delivery-request-items-product-id": "node scripts/migrate-delivery-request-items-product-id.js",
+    "migrate:delivery-finished-product-fields": "node scripts/migrate-delivery-finished-product-fields.js",
+    "migrate:delivery-semi-product-fields": "node scripts/migrate-delivery-semi-product-fields.js",
+    "migrate:delivery-semi-product-v2": "node scripts/migrate-delivery-semi-product-v2.js",
+    "migrate:delivery-semi-product-code-fields": "node scripts/migrate-delivery-semi-product-code-fields.js",
+    "migrate:delivery-semi-product-drop-spec-length": "node scripts/migrate-delivery-semi-product-drop-spec-length.js",
+    "migrate:delivery-semi-product-supplier-name": "node scripts/migrate-delivery-semi-product-supplier-name.js",
+    "normalize:delivery-finished-product-numbers": "node scripts/normalize-finished-product-numbers.js",
+    "normalize:delivery-semi-product-numbers": "node scripts/normalize-semi-product-numbers.js",
+    "import:semi-products-xlsx": "node scripts/import-semi-products-from-xlsx.js",
+    "retry:semi-products-failures": "node scripts/retry-semi-products-from-failures.js"
   },
   "dependencies": {
     "@aws-sdk/client-cloudwatch-logs": "^3.600.0",
@@ -35,13 +48,15 @@
     "express-validator": "^7.0.1",
     "form-data": "^4.0.5",
     "helmet": "^7.1.0",
+    "multer": "^2.1.1",
     "mysql2": "^3.6.5",
     "node-fetch": "^3.3.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.21.1",
     "winston": "^3.11.0",
-    "winston-cloudwatch": "^6.3.0"
+    "winston-cloudwatch": "^6.3.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.2.0",

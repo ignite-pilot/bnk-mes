@@ -1,6 +1,6 @@
 /**
  * 원자재 재고 관리 (원자재.md, 기본규칙.md)
- * - 검색: 업체 종류, 원자재 업체, 창고 이름, 원자재(복수), 재고 기준일(기본 1주)
+ * - 검색: 업체 종류, 원자재 업체, 창고 이름, 원자재(복수), 재고 기준일(선택 시에만 필터)
  * - 목록: flatten 라인, 위험도, 페이지네이션
  * - 등록: 원자재 업체 재고 / 비엔케이 재고, 보기/수정/삭제
  */
@@ -18,13 +18,6 @@ function formatDate(d) {
   if (!d) return '';
   const dt = new Date(d);
   return dt.toISOString().slice(0, 10);
-}
-
-function defaultDateRange() {
-  const end = new Date();
-  const start = new Date();
-  start.setDate(start.getDate() - 7);
-  return { startDate: formatDate(start), endDate: formatDate(end) };
 }
 
 const PAGE_SIZES = [10, 15, 20, 50, 100];
@@ -50,7 +43,8 @@ function MaterialStock() {
     supplierId: '',
     warehouseName: '',
     rawMaterialIds: [],
-    ...defaultDateRange(),
+    startDate: '',
+    endDate: '',
   });
   const [supplierWarehouses, setSupplierWarehouses] = useState([]);
   const [bnkWarehouses, setBnkWarehouses] = useState([]);
@@ -155,7 +149,14 @@ function MaterialStock() {
     setPage(1);
     fetchList();
   };
-  const initialSearch = { type: '', supplierId: '', warehouseName: '', rawMaterialIds: [], ...defaultDateRange() };
+  const initialSearch = {
+    type: '',
+    supplierId: '',
+    warehouseName: '',
+    rawMaterialIds: [],
+    startDate: '',
+    endDate: '',
+  };
   const handleResetSearch = () => {
     setSearch(initialSearch);
     setPage(1);

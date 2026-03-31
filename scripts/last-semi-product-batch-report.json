@@ -1,0 +1,40 @@
+{
+  "sourceFile": "/Users/ignite/Documents/제조AX/비엔케이/bnk반제품.xlsx",
+  "sheetName": "3. 하지 입고",
+  "semiProductType": "UNDERLAYER",
+  "totalRows": 304,
+  "inserted": 298,
+  "failed": 6,
+  "failures": [
+    {
+      "row": 228,
+      "code": null,
+      "reason": "차량 코드 미매핑: GL3 PE"
+    },
+    {
+      "row": 229,
+      "code": null,
+      "reason": "차량 코드 미매핑: GL3 PE"
+    },
+    {
+      "row": 230,
+      "code": null,
+      "reason": "차량 코드 미매핑: GL3 PE"
+    },
+    {
+      "row": 231,
+      "code": null,
+      "reason": "차량 코드 미매핑: GL3 PE"
+    },
+    {
+      "row": 232,
+      "code": null,
+      "reason": "차량 코드 미매핑: GL3 PE"
+    },
+    {
+      "row": 233,
+      "code": null,
+      "reason": "차량 코드 미매핑: GL3 PE"
+    }
+  ]
+}

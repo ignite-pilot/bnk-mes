@@ -21,11 +21,13 @@ function Layout() {
     if (isMobile) setSidebarOpen(true);
   };
 
-  const currentGroup = menuConfig.find(
-    (g) =>
-      g.path === location.pathname ||
-      location.pathname.startsWith(g.path + '/')
-  );
+  const currentGroup =
+    menuConfig.find((g) => g.children?.some((c) => c.path === location.pathname)) ||
+    menuConfig.find(
+      (g) =>
+        g.path === location.pathname ||
+        location.pathname.startsWith(g.path + '/')
+    );
 
   return (
     <div className={styles.wrapper}>

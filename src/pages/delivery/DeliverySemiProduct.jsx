@@ -7,11 +7,44 @@ import dtStyles from './DeliveryTable.module.css';
 
 const API = '/api/delivery-semi-products';
 const VEHICLE_API = '/api/delivery-vehicles';
+const SEMI_PRODUCT_TYPE_CODE = 'SEMI_PRODUCT';
+const SUPPLIER_API = '/api/delivery-suppliers';
+const WIDE_SEARCH_SELECT_WRAPPER_STYLE = {
+  width: '360px',
+};
 
 function formatDate(d) {
   if (!d) return '';
   const dt = new Date(d);
   return dt.toISOString().slice(0, 10);
+}
+
+function formatThickness(v) {
+  if (v == null || v === '' || Number.isNaN(Number(v))) return '-';
+  return Number(v).toFixed(2);
+}
+
+function formatInt(v) {
+  if (v == null || v === '' || Number.isNaN(Number(v))) return '-';
+  return String(Math.round(Number(v)));
+}
+
+function formatTWR(thickness, width, ratio) {
+  return `${formatThickness(thickness)}/${formatInt(width)}/${formatInt(ratio)}`;
+}
+
+function formatCodeTriple(vehicleCode, partCode, colorCode) {
+  const toText = (v) => (v != null && v !== '' ? String(v) : '-');
+  return `${toText(vehicleCode)}/${toText(partCode)}/${toText(colorCode)}`;
+}
+
+function normalizeSemiTypeValue(value, semiTypes) {
+  if (!value) return '';
+  const raw = String(value);
+  const byValue = semiTypes.find((t) => t.value === raw);
+  if (byValue) return byValue.value;
+  const byName = semiTypes.find((t) => t.name === raw);
+  return byName ? byName.value : raw;
 }
 
 const PAGE_SIZES = [10, 15, 20, 50, 100];
@@ -25,13 +58,17 @@ function DeliverySemiProduct() {
   const [limit, setLimit] = useState(20);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [search, setSearch] = useState({ name: '', code: '' });
+  const [search, setSearch] = useState({ vehicleCode: '', partCode: '', colorCode: '', supplierName: '' });
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState('add');
   const [formData, setFormData] = useState(null);
   const [formSaving, setFormSaving] = useState(false);
   const [formError, setFormError] = useState('');
+  const [suppliers, setSuppliers] = useState([]);
+  const [vehicleCodes, setVehicleCodes] = useState([]);
+  const [partCodes, setPartCodes] = useState([]);
   const [colorCodes, setColorCodes] = useState([]);
+  const [semiTypes, setSemiTypes] = useState([]);
 
   const userName = user?.name || user?.loginId || '';
 
@@ -39,10 +76,26 @@ function DeliverySemiProduct() {
 
   /* ig-config-manager COLOR_CODE 로드 */
   useEffect(() => {
+    fetch(`${SUPPLIER_API}?limit=500`)
+      .then((r) => r.json())
+      .then((d) => setSuppliers(d.list || []))
+      .catch(() => setSuppliers([]));
+    fetch(`${VEHICLE_API}/codes/VEHICLE_CODE`)
+      .then((r) => r.json())
+      .then((d) => setVehicleCodes(d.list || []))
+      .catch(() => setVehicleCodes([]));
+    fetch(`${VEHICLE_API}/codes/PART_CODE`)
+      .then((r) => r.json())
+      .then((d) => setPartCodes(d.list || []))
+      .catch(() => setPartCodes([]));
     fetch(`${VEHICLE_API}/codes/COLOR_CODE`)
       .then((r) => r.json())
       .then((d) => setColorCodes(d.list || []))
       .catch(() => setColorCodes([]));
+    fetch(`${VEHICLE_API}/codes/${SEMI_PRODUCT_TYPE_CODE}`)
+      .then((r) => r.json())
+      .then((d) => setSemiTypes(d.list || []))
+      .catch(() => setSemiTypes([]));
   }, []);
 
   const fetchList = useCallback(async () => {
@@ -55,8 +108,10 @@ function DeliverySemiProduct() {
         page: String(page),
         limit: String(limit),
       });
-      if (search.name.trim()) q.set('name', search.name.trim());
-      if (search.code.trim()) q.set('code', search.code.trim());
+      if (search.vehicleCode.trim()) q.set('vehicleCode', search.vehicleCode.trim());
+      if (search.partCode.trim()) q.set('partCode', search.partCode.trim());
+      if (search.colorCode.trim()) q.set('colorCode', search.colorCode.trim());
+      if (search.supplierName.trim()) q.set('supplierName', search.supplierName.trim());
       const res = await fetch(`${API}?${q}`, { signal: ac.signal });
       clearTimeout(timeoutId);
       const data = await res.json().catch(() => ({}));
@@ -76,7 +131,7 @@ function DeliverySemiProduct() {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, search.name, search.code]);
+  }, [page, limit, search.vehicleCode, search.partCode, search.colorCode, search.supplierName]);
 
   useEffect(() => {
     fetchList();
@@ -88,20 +143,22 @@ function DeliverySemiProduct() {
     fetchList();
   };
   const handleResetSearch = () => {
-    setSearch({ name: '', code: '' });
+    setSearch({ vehicleCode: '', partCode: '', colorCode: '', supplierName: '' });
     setPage(1);
   };
 
   const openAdd = () => {
     setFormMode('add');
     setFormData({
-      name: '',
       code: '',
+      semi_product_type: '',
+      vehicle_code: '',
+      part_code: '',
+      ratio: '',
       color_code: '',
       color_name: '',
       thickness: '',
       width: '',
-      length: '',
     });
     setFormError('');
     setFormOpen(true);
@@ -128,13 +185,15 @@ function DeliverySemiProduct() {
     setFormMode('edit');
     setFormData({
       id: row.id,
-      name: row.name ?? '',
       code: row.code ?? '',
+      semi_product_type: normalizeSemiTypeValue(row.semi_product_type, semiTypes),
+      vehicle_code: row.vehicle_code ?? '',
+      part_code: row.part_code ?? '',
+      ratio: row.ratio ?? '',
       color_code: row.color_code ?? '',
       color_name: row.color_name ?? '',
       thickness: row.thickness ?? '',
       width: row.width ?? '',
-      length: row.length ?? '',
       updated_at: row.updated_at,
       updated_by: row.updated_by,
     });
@@ -152,6 +211,14 @@ function DeliverySemiProduct() {
     }
   };
 
+  useEffect(() => {
+    if (!formData || formMode !== 'edit' || semiTypes.length === 0) return;
+    const normalized = normalizeSemiTypeValue(formData.semi_product_type, semiTypes);
+    if (normalized !== formData.semi_product_type) {
+      setFormData((prev) => ({ ...prev, semi_product_type: normalized }));
+    }
+  }, [formData, formMode, semiTypes]);
+
   const closeForm = () => {
     setFormOpen(false);
     setFormData(null);
@@ -165,14 +232,6 @@ function DeliverySemiProduct() {
       setFormError('수정자는 필수입니다. 로그인 후 등록해 주세요.');
       return;
     }
-    if (!formData.name?.trim()) {
-      setFormError('반제품 이름은 필수입니다.');
-      return;
-    }
-    if (!formData.code?.trim()) {
-      setFormError('반제품 코드는 필수입니다.');
-      return;
-    }
     setFormSaving(true);
     setFormError('');
     try {
@@ -180,13 +239,15 @@ function DeliverySemiProduct() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: formData.name.trim(),
-          code: formData.code.trim(),
+          code: formData.code?.trim() || null,
+          semi_product_type: formData.semi_product_type?.trim() || null,
+          vehicle_code: formData.vehicle_code?.trim() || null,
+          part_code: formData.part_code?.trim() || null,
+          ratio: formData.ratio !== '' ? Number(formData.ratio) : null,
           color_code: formData.color_code?.trim() || null,
           color_name: formData.color_name?.trim() || null,
           thickness: formData.thickness !== '' ? Number(formData.thickness) : null,
           width: formData.width !== '' ? Number(formData.width) : null,
-          length: formData.length !== '' ? Number(formData.length) : null,
           updatedBy: userName,
         }),
       });
@@ -205,14 +266,6 @@ function DeliverySemiProduct() {
 
   const handleSubmitEdit = async (e) => {
     e.preventDefault();
-    if (!formData.name?.trim()) {
-      setFormError('반제품 이름은 필수입니다.');
-      return;
-    }
-    if (!formData.code?.trim()) {
-      setFormError('반제품 코드는 필수입니다.');
-      return;
-    }
     setFormSaving(true);
     setFormError('');
     try {
@@ -220,13 +273,15 @@ function DeliverySemiProduct() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: formData.name.trim(),
-          code: formData.code.trim(),
+          code: formData.code?.trim() || null,
+          semi_product_type: formData.semi_product_type?.trim() || null,
+          vehicle_code: formData.vehicle_code?.trim() || null,
+          part_code: formData.part_code?.trim() || null,
+          ratio: formData.ratio !== '' ? Number(formData.ratio) : null,
           color_code: formData.color_code?.trim() || null,
           color_name: formData.color_name?.trim() || null,
           thickness: formData.thickness !== '' ? Number(formData.thickness) : null,
           width: formData.width !== '' ? Number(formData.width) : null,
-          length: formData.length !== '' ? Number(formData.length) : null,
           updatedBy: userName,
         }),
       });
@@ -265,8 +320,10 @@ function DeliverySemiProduct() {
 
   const handleExcelDownload = async () => {
     const q = new URLSearchParams();
-    if (search.name.trim()) q.set('name', search.name.trim());
-    if (search.code.trim()) q.set('code', search.code.trim());
+    if (search.vehicleCode.trim()) q.set('vehicleCode', search.vehicleCode.trim());
+    if (search.partCode.trim()) q.set('partCode', search.partCode.trim());
+    if (search.colorCode.trim()) q.set('colorCode', search.colorCode.trim());
+    if (search.supplierName.trim()) q.set('supplierName', search.supplierName.trim());
     setError('');
     try {
       const res = await fetch(`${API}/export-excel?${q}`);
@@ -294,8 +351,13 @@ function DeliverySemiProduct() {
   const formatQty = (v) => (v != null && v !== '' && !Number.isNaN(Number(v)) ? String(Math.round(Number(v))) : '-');
   const getCodeLabel = (codes, val) => {
     if (!val) return '-';
-    const found = codes.find((c) => c.value === val);
+    const found = codes.find((c) => c.value === val || c.name === val);
     return found ? `${found.name} (${found.value})` : val;
+  };
+  const getCodeNameOnly = (codes, val) => {
+    if (!val) return '-';
+    const found = codes.find((c) => c.value === val || c.name === val);
+    return found ? found.name : val;
   };
 
   return (
@@ -304,23 +366,43 @@ function DeliverySemiProduct() {
 
       <form onSubmit={handleSearch} className={styles.searchForm}>
         <label className={styles.searchLabel}>
-          반제품 이름
-          <input
-            type="text"
-            value={search.name}
-            onChange={(e) => setSearch((s) => ({ ...s, name: e.target.value }))}
-            className={styles.input}
-            placeholder="검색"
+          차량코드
+          <SelectDropdown
+            options={vehicleCodes.map((t) => ({ value: t.value, label: `${t.name} (${t.value})` }))}
+            value={search.vehicleCode}
+            onChange={(val) => setSearch((s) => ({ ...s, vehicleCode: val }))}
+            placeholder="선택"
+            style={WIDE_SEARCH_SELECT_WRAPPER_STYLE}
           />
         </label>
         <label className={styles.searchLabel}>
-          반제품 코드
-          <input
-            type="text"
-            value={search.code}
-            onChange={(e) => setSearch((s) => ({ ...s, code: e.target.value }))}
-            className={styles.input}
-            placeholder="검색"
+          부위코드
+          <SelectDropdown
+            options={partCodes.map((t) => ({ value: t.value, label: `${t.name} (${t.value})` }))}
+            value={search.partCode}
+            onChange={(val) => setSearch((s) => ({ ...s, partCode: val }))}
+            placeholder="선택"
+            style={WIDE_SEARCH_SELECT_WRAPPER_STYLE}
+          />
+        </label>
+        <label className={styles.searchLabel}>
+          색상코드
+          <SelectDropdown
+            options={colorCodes.map((t) => ({ value: t.value, label: `${t.name} (${t.value})` }))}
+            value={search.colorCode}
+            onChange={(val) => setSearch((s) => ({ ...s, colorCode: val }))}
+            placeholder="선택"
+            style={WIDE_SEARCH_SELECT_WRAPPER_STYLE}
+          />
+        </label>
+        <label className={styles.searchLabel}>
+          납품 업체
+          <SelectDropdown
+            options={suppliers.map((s) => ({ value: s.name, label: s.name }))}
+            value={search.supplierName}
+            onChange={(val) => setSearch((s) => ({ ...s, supplierName: val }))}
+            placeholder="선택"
+            style={WIDE_SEARCH_SELECT_WRAPPER_STYLE}
           />
         </label>
         <button type="submit" className={styles.btnPrimary}>
@@ -370,14 +452,11 @@ function DeliverySemiProduct() {
           <table className={`${styles.table} ${dtStyles.fixedTable}`}>
             <thead>
               <tr>
-                <th style={{ width: isMobile ? '35%' : '20%' }}>반제품 이름</th>
-                <th style={{ width: isMobile ? '35%' : '18%' }}>반제품 코드</th>
+                <th style={{ width: isMobile ? '30%' : '14%' }}>반제품 종류</th>
+                <th style={{ width: isMobile ? '50%' : '28%' }}>차량코드/부위코드/색상</th>
                 {!isMobile && (
                   <>
-                    <th style={{ width: '18%' }}>색상 이름</th>
-                    <th style={{ width: '12%' }}>두께</th>
-                    <th style={{ width: '10%' }}>폭</th>
-                    <th style={{ width: '10%' }}>길이</th>
+                    <th style={{ width: '18%' }}>두께/폭/배율</th>
                   </>
                 )}
                 <th style={{ width: isMobile ? '30%' : '12%' }}>기능</th>
@@ -386,29 +465,18 @@ function DeliverySemiProduct() {
             <tbody>
               {list.length === 0 ? (
                 <tr>
-                  <td colSpan={isMobile ? 3 : 7} className={styles.empty}>
+                  <td colSpan={isMobile ? 3 : 5} className={styles.empty}>
                     조회된 반제품이 없습니다.
                   </td>
                 </tr>
               ) : (
                 list.map((row) => (
                   <tr key={row.id}>
-                    <td>
-                      <button
-                        type="button"
-                        className={styles.linkBtn}
-                        onClick={() => openView(row.id)}
-                      >
-                        {renderCell(row.name)}
-                      </button>
-                    </td>
-                    <td>{renderCell(row.code)}</td>
+                    <td>{getCodeNameOnly(semiTypes, row.semi_product_type)}</td>
+                    <td>{formatCodeTriple(row.vehicle_code, row.part_code, row.color_code)}</td>
                     {!isMobile && (
                       <>
-                        <td>{renderCell(row.color_name)}</td>
-                        <td>{renderCell(row.thickness)}</td>
-                        <td>{renderCell(row.width)}</td>
-                        <td>{renderCell(row.length)}</td>
+                        <td>{formatTWR(row.thickness, row.width, row.ratio)}</td>
                       </>
                     )}
                     <td>
@@ -422,7 +490,7 @@ function DeliverySemiProduct() {
                       <button
                         type="button"
                         className={styles.btnSmallDanger}
-                        onClick={() => handleDelete(row.id, row.name)}
+                        onClick={() => handleDelete(row.id, row.code || `ID:${row.id}`)}
                       >
                         삭제
                       </button>
@@ -523,23 +591,50 @@ function DeliverySemiProduct() {
               <form onSubmit={handleSubmitAdd} className={styles.form}>
                 <p className={styles.optionalHint}>수정일자·수정자는 자동 기록됩니다.</p>
                 <label className={styles.label}>
-                  반제품 이름 <span className={styles.required}>(필수)</span>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData((f) => ({ ...f, name: e.target.value }))}
-                    className={styles.input}
-                    required
-                  />
-                </label>
-                <label className={styles.label}>
-                  반제품 코드 <span className={styles.required}>(필수)</span>
+                  반제품 코드 <span className={styles.optional}>(선택)</span>
                   <input
                     type="text"
                     value={formData.code}
                     onChange={(e) => setFormData((f) => ({ ...f, code: e.target.value }))}
                     className={styles.input}
-                    required
+                    placeholder="미입력 가능"
+                  />
+                </label>
+                <label className={styles.label}>
+                  반제품 종류 <span className={styles.optional}>(선택)</span>
+                  <SelectDropdown
+                    options={semiTypes.map((t) => ({ value: t.value, label: `${t.name} (${t.value})` }))}
+                    value={formData.semi_product_type}
+                    onChange={(val) => setFormData((f) => ({ ...f, semi_product_type: val }))}
+                    placeholder="선택"
+                  />
+                </label>
+                <label className={styles.label}>
+                  차량 코드 <span className={styles.optional}>(선택)</span>
+                  <SelectDropdown
+                    options={vehicleCodes.map((v) => ({ value: v.value, label: `${v.name} (${v.value})` }))}
+                    value={formData.vehicle_code}
+                    onChange={(val) => setFormData((f) => ({ ...f, vehicle_code: val }))}
+                    placeholder="차량 코드 선택"
+                  />
+                </label>
+                <label className={styles.label}>
+                  부위 코드 <span className={styles.optional}>(선택)</span>
+                  <SelectDropdown
+                    options={partCodes.map((p) => ({ value: p.value, label: `${p.name} (${p.value})` }))}
+                    value={formData.part_code}
+                    onChange={(val) => setFormData((f) => ({ ...f, part_code: val }))}
+                    placeholder="부위 코드 선택"
+                  />
+                </label>
+                <label className={styles.label}>
+                  배율 <span className={styles.optional}>(선택)</span>
+                  <input
+                    type="number"
+                    step="1"
+                    value={formData.ratio}
+                    onChange={(e) => setFormData((f) => ({ ...f, ratio: e.target.value }))}
+                    className={styles.input}
                   />
                 </label>
                 <label className={styles.label}>
@@ -558,7 +653,7 @@ function DeliverySemiProduct() {
                   두께 <span className={styles.optional}>(선택)</span>
                   <input
                     type="number"
-                    step="any"
+                    step="0.01"
                     value={formData.thickness}
                     onChange={(e) => setFormData((f) => ({ ...f, thickness: e.target.value }))}
                     className={styles.input}
@@ -568,19 +663,9 @@ function DeliverySemiProduct() {
                   폭 <span className={styles.optional}>(선택)</span>
                   <input
                     type="number"
-                    step="any"
+                    step="1"
                     value={formData.width}
                     onChange={(e) => setFormData((f) => ({ ...f, width: e.target.value }))}
-                    className={styles.input}
-                  />
-                </label>
-                <label className={styles.label}>
-                  길이 <span className={styles.optional}>(선택)</span>
-                  <input
-                    type="number"
-                    step="any"
-                    value={formData.length}
-                    onChange={(e) => setFormData((f) => ({ ...f, length: e.target.value }))}
                     className={styles.input}
                   />
                 </label>
@@ -598,18 +683,24 @@ function DeliverySemiProduct() {
             {formMode === 'view' && (
               <div className={styles.viewForm}>
                 <dl className={styles.dl}>
-                  <dt>반제품 이름</dt>
-                  <dd>{renderCell(formData.name)}</dd>
                   <dt>반제품 코드</dt>
                   <dd>{renderCell(formData.code)}</dd>
+                  <dt>반제품 종류</dt>
+                  <dd>{renderCell(formData.semi_product_type)}</dd>
+                  <dt>차량 코드</dt>
+                  <dd>{renderCell(formData.vehicle_code)}</dd>
+                  <dt>부위 코드</dt>
+                  <dd>{renderCell(formData.part_code)}</dd>
+                  <dt>색상 코드</dt>
+                  <dd>{renderCell(formData.color_code)}</dd>
                   <dt>색상</dt>
                   <dd>{getCodeLabel(colorCodes, formData.color_code)}</dd>
+                  <dt>배율</dt>
+                  <dd>{formatInt(formData.ratio)}</dd>
                   <dt>두께</dt>
-                  <dd>{renderCell(formData.thickness)}</dd>
+                  <dd>{formatThickness(formData.thickness)}</dd>
                   <dt>폭</dt>
-                  <dd>{renderCell(formData.width)}</dd>
-                  <dt>길이</dt>
-                  <dd>{renderCell(formData.length)}</dd>
+                  <dd>{formatInt(formData.width)}</dd>
                   <dt>수정일자</dt>
                   <dd>{formData.updated_at ? formatDate(formData.updated_at) : '-'}</dd>
                   <dt>수정자</dt>
@@ -629,23 +720,50 @@ function DeliverySemiProduct() {
             {formMode === 'edit' && (
               <form onSubmit={handleSubmitEdit} className={styles.form}>
                 <label className={styles.label}>
-                  반제품 이름 <span className={styles.required}>*</span>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData((f) => ({ ...f, name: e.target.value }))}
-                    className={styles.input}
-                    required
-                  />
-                </label>
-                <label className={styles.label}>
-                  반제품 코드 <span className={styles.required}>*</span>
+                  반제품 코드 <span className={styles.optional}>(선택)</span>
                   <input
                     type="text"
                     value={formData.code}
                     onChange={(e) => setFormData((f) => ({ ...f, code: e.target.value }))}
                     className={styles.input}
-                    required
+                    placeholder="미입력 가능"
+                  />
+                </label>
+                <label className={styles.label}>
+                  반제품 종류
+                  <SelectDropdown
+                    options={semiTypes.map((t) => ({ value: t.value, label: `${t.name} (${t.value})` }))}
+                    value={formData.semi_product_type}
+                    onChange={(val) => setFormData((f) => ({ ...f, semi_product_type: val }))}
+                    placeholder="선택"
+                  />
+                </label>
+                <label className={styles.label}>
+                  차량 코드
+                  <SelectDropdown
+                    options={vehicleCodes.map((v) => ({ value: v.value, label: `${v.name} (${v.value})` }))}
+                    value={formData.vehicle_code}
+                    onChange={(val) => setFormData((f) => ({ ...f, vehicle_code: val }))}
+                    placeholder="차량 코드 선택"
+                  />
+                </label>
+                <label className={styles.label}>
+                  부위 코드
+                  <SelectDropdown
+                    options={partCodes.map((p) => ({ value: p.value, label: `${p.name} (${p.value})` }))}
+                    value={formData.part_code}
+                    onChange={(val) => setFormData((f) => ({ ...f, part_code: val }))}
+                    placeholder="부위 코드 선택"
+                  />
+                </label>
+                <label className={styles.label}>
+                  배율
+                  <input
+                    type="number"
+                    step="1"
+                    value={formData.ratio}
+                    onChange={(e) => setFormData((f) => ({ ...f, ratio: e.target.value }))}
+                    className={styles.input}
                   />
                 </label>
                 <label className={styles.label}>
@@ -664,7 +782,7 @@ function DeliverySemiProduct() {
                   두께
                   <input
                     type="number"
-                    step="any"
+                    step="0.01"
                     value={formData.thickness}
                     onChange={(e) => setFormData((f) => ({ ...f, thickness: e.target.value }))}
                     className={styles.input}
@@ -674,19 +792,9 @@ function DeliverySemiProduct() {
                   폭
                   <input
                     type="number"
-                    step="any"
+                    step="1"
                     value={formData.width}
                     onChange={(e) => setFormData((f) => ({ ...f, width: e.target.value }))}
-                    className={styles.input}
-                  />
-                </label>
-                <label className={styles.label}>
-                  길이
-                  <input
-                    type="number"
-                    step="any"
-                    value={formData.length}
-                    onChange={(e) => setFormData((f) => ({ ...f, length: e.target.value }))}
                     className={styles.input}
                   />
                 </label>

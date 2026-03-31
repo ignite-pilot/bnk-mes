@@ -2,11 +2,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 import { useAuth } from '../../context/AuthContext';
 import { useDaumPostcode } from '../../hooks/useDaumPostcode';
-import RawMaterialSelectPopup from '../../components/RawMaterialSelectPopup';
+import SelectDropdown from '../../components/SelectDropdown';
 import styles from './MaterialInfo.module.css';
 
 const API = '/api/material-suppliers';
-const MATERIAL_API = '/api/material';
+const VEHICLE_API = '/api/delivery-vehicles';
+const RAW_MATERIAL_TYPE_CODE = 'RAW_MATERIAL_TYPE';
 
 function formatDate(d) {
   if (!d) return '';
@@ -14,31 +15,23 @@ function formatDate(d) {
   return dt.toISOString().slice(0, 10);
 }
 
-/** 기간 지정 시 사용 (공급 업체는 기본값 기간 없음 = 전체 조회) */
-function defaultDateRange() {
-  const end = new Date();
-  const start = new Date();
-  start.setDate(start.getDate() - 30);
-  return { startDate: formatDate(start), endDate: formatDate(end) };
-}
-
 const PAGE_SIZES = [10, 15, 20, 50, 100];
 
-/** 선택된 원자재 ID 배열과 전체 원자재 목록으로 표시 문자열 반환 */
-function getSelectedMaterialLabel(ids, materials) {
-  if (!ids?.length) return '원자재 선택';
-  const names = ids
-    .map((id) => materials.find((m) => m.id === id))
+/** 선택된 코드 배열과 코드 목록으로 표시 문자열 반환 */
+function getSelectedRawMaterialTypeLabel(codes, rawMaterialTypes) {
+  if (!codes?.length) return '원자재 종류 선택';
+  const names = codes
+    .map((code) => rawMaterialTypes.find((item) => item.value === code))
     .filter(Boolean)
-    .map((m) => (m.kind ? `${m.kind} / ${m.name}` : m.name || '').trim())
+    .map((item) => item.name || item.value)
     .join(', ');
-  return names || `${ids.length}개 선택됨`;
+  return names || `${codes.length}개 선택됨`;
 }
 
 function MaterialSupplier() {
   const { user } = useAuth();
   const isMobile = useIsMobile();
-  const [materials, setMaterials] = useState([]); // 원자재 목록 (제공 원자재 선택용)
+  const [rawMaterialTypes, setRawMaterialTypes] = useState([]);
   const [list, setList] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -47,15 +40,12 @@ function MaterialSupplier() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState({
     name: '',
-    startDate: '',
-    endDate: '',
   });
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState('add');
   const [formData, setFormData] = useState(null);
   const [formSaving, setFormSaving] = useState(false);
   const [formError, setFormError] = useState('');
-  const [rawMaterialPopupOpen, setRawMaterialPopupOpen] = useState(false);
 
   const userName = user?.name || user?.loginId || '';
   const openDaumPostcode = useDaumPostcode();
@@ -86,8 +76,6 @@ function MaterialSupplier() {
       const q = new URLSearchParams({
         page: String(page),
         limit: String(limit),
-        startDate: search.startDate,
-        endDate: search.endDate,
       });
       if (search.name.trim()) q.set('name', search.name.trim());
       const res = await fetch(`${API}?${q}`, { signal: ac.signal });
@@ -110,24 +98,17 @@ function MaterialSupplier() {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, search.startDate, search.endDate, search.name]);
+  }, [page, limit, search.name]);
 
   useEffect(() => {
     fetchList();
   }, [fetchList]);
 
   useEffect(() => {
-    const start = new Date();
-    start.setFullYear(start.getFullYear() - 1);
-    const q = new URLSearchParams({
-      startDate: formatDate(start),
-      endDate: formatDate(new Date()),
-      limit: '500',
-    });
-    fetch(`${MATERIAL_API}?${q}`)
+    fetch(`${VEHICLE_API}/codes/${RAW_MATERIAL_TYPE_CODE}`)
       .then((r) => r.json())
-      .then((d) => setMaterials(d.list || []))
-      .catch(() => setMaterials([]));
+      .then((d) => setRawMaterialTypes(d.list || []))
+      .catch(() => setRawMaterialTypes([]));
   }, []);
 
   const handleSearch = (e) => {
@@ -135,7 +116,7 @@ function MaterialSupplier() {
     setPage(1);
     fetchList();
   };
-  const initialSearch = { name: '', startDate: '', endDate: '' };
+  const initialSearch = { name: '' };
   const handleResetSearch = () => {
     setSearch(initialSearch);
     setPage(1);
@@ -154,7 +135,7 @@ function MaterialSupplier() {
       manager_email: '',
       inbound_lead_time: '',
       order_lead_time: '',
-      raw_material_ids: [],
+      raw_material_type_codes: [],
     });
     setFormError('');
     setFormOpen(true);
@@ -195,7 +176,7 @@ function MaterialSupplier() {
       manager_email: row.manager_email ?? '',
       inbound_lead_time: row.inbound_lead_time != null ? row.inbound_lead_time : '',
       order_lead_time: row.order_lead_time != null ? row.order_lead_time : '',
-      raw_material_ids: row.raw_material_ids ?? [],
+      raw_material_type_codes: row.raw_material_type_codes ?? [],
       updated_at: row.updated_at,
       updated_by: row.updated_by,
     });
@@ -230,10 +211,6 @@ function MaterialSupplier() {
       setFormError('업체 명은 필수입니다.');
       return;
     }
-    if (!formData.address?.trim()) {
-      setFormError('주소는 필수입니다.');
-      return;
-    }
     setFormSaving(true);
     setFormError('');
     try {
@@ -251,7 +228,7 @@ function MaterialSupplier() {
           manager_email: formData.manager_email?.trim() || null,
           inbound_lead_time: formData.inbound_lead_time !== '' ? Number(formData.inbound_lead_time) : null,
           order_lead_time: formData.order_lead_time !== '' ? Number(formData.order_lead_time) : null,
-          raw_material_ids: Array.isArray(formData.raw_material_ids) ? formData.raw_material_ids : [],
+          raw_material_type_codes: Array.isArray(formData.raw_material_type_codes) ? formData.raw_material_type_codes : [],
           updatedBy: userName,
         }),
       });
@@ -295,7 +272,7 @@ function MaterialSupplier() {
           manager_email: formData.manager_email?.trim() || null,
           inbound_lead_time: formData.inbound_lead_time !== '' ? Number(formData.inbound_lead_time) : null,
           order_lead_time: formData.order_lead_time !== '' ? Number(formData.order_lead_time) : null,
-          raw_material_ids: Array.isArray(formData.raw_material_ids) ? formData.raw_material_ids : [],
+          raw_material_type_codes: Array.isArray(formData.raw_material_type_codes) ? formData.raw_material_type_codes : [],
           updatedBy: userName,
         }),
       });
@@ -333,10 +310,7 @@ function MaterialSupplier() {
   };
 
   const handleExcelDownload = async () => {
-    const q = new URLSearchParams({
-      startDate: search.startDate,
-      endDate: search.endDate,
-    });
+    const q = new URLSearchParams();
     if (search.name.trim()) q.set('name', search.name.trim());
     setError('');
     try {
@@ -380,28 +354,6 @@ function MaterialSupplier() {
             placeholder="검색"
           />
         </label>
-        {!isMobile && (
-          <>
-            <label className={styles.searchLabel}>
-              기간(시작)
-              <input
-                type="date"
-                value={search.startDate}
-                onChange={(e) => setSearch((s) => ({ ...s, startDate: e.target.value }))}
-                className={styles.input}
-              />
-            </label>
-            <label className={styles.searchLabel}>
-              기간(종료)
-              <input
-                type="date"
-                value={search.endDate}
-                onChange={(e) => setSearch((s) => ({ ...s, endDate: e.target.value }))}
-                className={styles.input}
-              />
-            </label>
-          </>
-        )}
         <button type="submit" className={styles.btnPrimary}>
           검색
         </button>
@@ -626,7 +578,7 @@ function MaterialSupplier() {
                   />
                 </label>
                 <label className={styles.label}>
-                  주소 <span className={styles.required}>(필수)</span>
+                  주소 <span className={styles.optional}>(선택)</span>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
                     <input
                       type="text"
@@ -634,7 +586,6 @@ function MaterialSupplier() {
                       onChange={(e) => setFormData((f) => ({ ...f, address: e.target.value }))}
                       className={styles.input}
                       placeholder="Daum 주소 검색으로 입력"
-                      required
                       style={{ flex: 1 }}
                     />
                     <button type="button" className={styles.btnSecondary} onClick={handleAddressSearch}>
@@ -680,13 +631,12 @@ function MaterialSupplier() {
                   />
                 </label>
                 <label className={styles.label}>
-                  담당자 이메일 <span className={styles.required}>(필수)</span>
+                  담당자 이메일 <span className={styles.optional}>(선택)</span>
                   <input
                     type="email"
                     value={formData.manager_email}
                     onChange={(e) => setFormData((f) => ({ ...f, manager_email: e.target.value }))}
                     className={styles.input}
-                    required
                   />
                 </label>
                 <label className={styles.label}>
@@ -711,26 +661,17 @@ function MaterialSupplier() {
                 </label>
                 <label className={styles.label}>
                   제공 원자재 <span className={styles.optional}>(선택)</span>
-                  <div>
-                    <button
-                      type="button"
-                      className={styles.input}
-                      style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }}
-                      onClick={() => setRawMaterialPopupOpen(true)}
-                      title={getSelectedMaterialLabel(formData.raw_material_ids || [], materials)}
-                    >
-                      {getSelectedMaterialLabel(formData.raw_material_ids || [], materials)}
-                    </button>
-                  </div>
+                  <SelectDropdown
+                    options={rawMaterialTypes.map((item) => ({ value: item.value, label: item.name || item.value }))}
+                    value={formData.raw_material_type_codes || []}
+                    onChange={(codes) => setFormData((f) => ({ ...f, raw_material_type_codes: codes }))}
+                    placeholder="원자재 종류 선택"
+                    maxSelect={100}
+                  />
+                  <small className={styles.optional}>
+                    {getSelectedRawMaterialTypeLabel(formData.raw_material_type_codes || [], rawMaterialTypes)}
+                  </small>
                 </label>
-                <RawMaterialSelectPopup
-                  open={rawMaterialPopupOpen}
-                  onClose={() => setRawMaterialPopupOpen(false)}
-                  materials={materials}
-                  selectedIds={formData.raw_material_ids || []}
-                  onConfirm={(ids) => setFormData((f) => ({ ...f, raw_material_ids: ids }))}
-                  title="제공 원자재 선택"
-                />
                 <div className={styles.formActions}>
                   <button type="submit" className={styles.btnPrimary} disabled={formSaving}>
                     {formSaving ? '등록 중...' : '등록'}
@@ -767,11 +708,11 @@ function MaterialSupplier() {
                   <dd>{formatQty(formData.order_lead_time)}</dd>
                   <dt>제공 원자재</dt>
                   <dd>
-                    {formData.raw_material_ids?.length
-                      ? formData.raw_material_ids
-                          .map((mid) => materials.find((m) => m.id === mid))
+                    {formData.raw_material_type_codes?.length
+                      ? formData.raw_material_type_codes
+                          .map((code) => rawMaterialTypes.find((item) => item.value === code))
                           .filter(Boolean)
-                          .map((m) => `${m.kind || ''} / ${m.name || ''}`)
+                          .map((item) => item.name || item.value)
                           .join(', ') || '-'
                       : '-'}
                   </dd>
@@ -896,26 +837,17 @@ function MaterialSupplier() {
                 </label>
                 <label className={styles.label}>
                   제공 원자재
-                  <div>
-                    <button
-                      type="button"
-                      className={styles.input}
-                      style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }}
-                      onClick={() => setRawMaterialPopupOpen(true)}
-                      title={getSelectedMaterialLabel(formData.raw_material_ids || [], materials)}
-                    >
-                      {getSelectedMaterialLabel(formData.raw_material_ids || [], materials)}
-                    </button>
-                  </div>
+                  <SelectDropdown
+                    options={rawMaterialTypes.map((item) => ({ value: item.value, label: item.name || item.value }))}
+                    value={formData.raw_material_type_codes || []}
+                    onChange={(codes) => setFormData((f) => ({ ...f, raw_material_type_codes: codes }))}
+                    placeholder="원자재 종류 선택"
+                    maxSelect={100}
+                  />
+                  <small className={styles.optional}>
+                    {getSelectedRawMaterialTypeLabel(formData.raw_material_type_codes || [], rawMaterialTypes)}
+                  </small>
                 </label>
-                <RawMaterialSelectPopup
-                  open={rawMaterialPopupOpen}
-                  onClose={() => setRawMaterialPopupOpen(false)}
-                  materials={materials}
-                  selectedIds={formData.raw_material_ids || []}
-                  onConfirm={(ids) => setFormData((f) => ({ ...f, raw_material_ids: ids }))}
-                  title="제공 원자재 선택"
-                />
                 <div className={styles.viewForm}>
                   <dl className={styles.dl}>
                     <dt>수정일자</dt>

@@ -27,13 +27,6 @@ function formatQty(v) {
   return String(Math.round(n));
 }
 
-function defaultDateRange() {
-  const end = new Date();
-  const start = new Date();
-  start.setDate(start.getDate() - 7);
-  return { startDate: formatDate(start), endDate: formatDate(end) };
-}
-
 const PAGE_SIZES = [10, 15, 20, 50, 100];
 
 function MaterialInfo() {
@@ -49,7 +42,6 @@ function MaterialInfo() {
   const [search, setSearch] = useState({
     kindId: '',
     name: '',
-    ...defaultDateRange(),
   });
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState('add'); // 'add' | 'view' | 'edit'
@@ -70,8 +62,6 @@ function MaterialInfo() {
       const q = new URLSearchParams({
         page: String(page),
         limit: String(limit),
-        startDate: search.startDate,
-        endDate: search.endDate,
       });
       if (search.kindId) q.set('kindId', String(search.kindId));
       if (search.name.trim()) q.set('name', search.name.trim());
@@ -95,7 +85,7 @@ function MaterialInfo() {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, search.startDate, search.endDate, search.kindId, search.name]);
+  }, [page, limit, search.kindId, search.name]);
 
   useEffect(() => {
     fetch(`${API}/types`)
@@ -120,7 +110,7 @@ function MaterialInfo() {
     setPage(1);
     fetchList();
   };
-  const initialSearch = { kindId: '', name: '', ...defaultDateRange() };
+  const initialSearch = { kindId: '', name: '' };
   const handleResetSearch = () => {
     setSearch(initialSearch);
     setPage(1);
@@ -295,10 +285,7 @@ function MaterialInfo() {
   };
 
   const handleExcelDownload = async () => {
-    const q = new URLSearchParams({
-      startDate: search.startDate,
-      endDate: search.endDate,
-    });
+    const q = new URLSearchParams();
     if (search.kindId) q.set('kindId', String(search.kindId));
     if (search.name.trim()) q.set('name', search.name.trim());
     setError('');
@@ -356,28 +343,6 @@ function MaterialInfo() {
             placeholder="검색"
           />
         </label>
-        {!isMobile && (
-          <>
-            <label className={styles.searchLabel}>
-              등록일자(시작)
-              <input
-                type="date"
-                value={search.startDate}
-                onChange={(e) => setSearch((s) => ({ ...s, startDate: e.target.value }))}
-                className={styles.input}
-              />
-            </label>
-            <label className={styles.searchLabel}>
-              등록일자(종료)
-              <input
-                type="date"
-                value={search.endDate}
-                onChange={(e) => setSearch((s) => ({ ...s, endDate: e.target.value }))}
-                className={styles.input}
-              />
-            </label>
-          </>
-        )}
         <button type="submit" className={styles.btnPrimary}>
           검색
         </button>

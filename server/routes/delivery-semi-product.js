@@ -5,31 +5,72 @@
  */
 import { Router } from 'express';
 import { getPool } from '../lib/db.js';
+import { countDeliveryRequestItemRefs } from '../lib/delivery-request-items.js';
 import logger from '../lib/logger.js';
 
 const router = Router();
 const TABLE = 'delivery_semi_products';
 
-const LIST_SELECT = `SELECT id, name, code, color_code, color_name, thickness, width, \`length\`, updated_at, updated_by
+const LIST_SELECT = `SELECT id, name, code, semi_product_type, vehicle_code, part_code, supplier_name, ratio, color_code, color_name, thickness, width, updated_at, updated_by
   FROM \`${TABLE}\``;
+
+function toNullableTwoDecimal(v) {
+  if (v == null || v === '') return null;
+  const n = Number(v);
+  if (!Number.isFinite(n)) return null;
+  return Number(n.toFixed(2));
+}
+
+function toNullableInt(v) {
+  if (v == null || v === '') return null;
+  const n = Number(v);
+  if (!Number.isFinite(n)) return null;
+  return Math.round(n);
+}
 
 /**
  * 엑셀 다운로드 (CSV)
- * GET /api/delivery-semi-products/export-excel?name=&code=
+ * GET /api/delivery-semi-products/export-excel?vehicleCode=&partCode=&colorCode=&supplierName=
  */
 router.get('/export-excel', async (req, res) => {
   try {
-    const { name = '', code = '' } = req.query;
+    const {
+      vehicleCode = '',
+      partCode = '',
+      colorCode = '',
+      supplierName = '',
+      semiProductType = '',
+      semiProductTypeName = '',
+    } = req.query;
 
     let where = 'WHERE deleted = ?';
     const params = ['N'];
-    if (name && String(name).trim()) {
-      where += ' AND name LIKE ?';
-      params.push(`%${String(name).trim()}%`);
+    if (vehicleCode && String(vehicleCode).trim()) {
+      where += ' AND vehicle_code = ?';
+      params.push(String(vehicleCode).trim());
     }
-    if (code && String(code).trim()) {
-      where += ' AND code LIKE ?';
-      params.push(`%${String(code).trim()}%`);
+    if (partCode && String(partCode).trim()) {
+      where += ' AND part_code = ?';
+      params.push(String(partCode).trim());
+    }
+    if (colorCode && String(colorCode).trim()) {
+      where += ' AND color_code = ?';
+      params.push(String(colorCode).trim());
+    }
+    if (supplierName && String(supplierName).trim()) {
+      where += ' AND supplier_name LIKE ?';
+      params.push(`%${String(supplierName).trim()}%`);
+    }
+    if (semiProductType && String(semiProductType).trim()) {
+      const typeCode = String(semiProductType).trim();
+      const typeName = String(semiProductTypeName || '').trim();
+      if (typeName) {
+        where += ' AND (semi_product_type = ? OR semi_product_type = ?)';
+        params.push(typeCode, typeName);
+      } else {
+        where += ' AND semi_product_type = ?';
+        params.push(typeCode);
+      }
     }
 
     const [rows] = await getPool().query(
@@ -38,7 +79,7 @@ router.get('/export-excel', async (req, res) => {
     );
 
     const BOM = '\uFEFF';
-    const header = '반제품 이름,반제품 코드,색상 코드,색상 이름,두께,폭,길이,수정일자,수정자\n';
+    const header = '반제품 종류,차량 코드,부위 코드,색상 코드,납품 업체,배율,두께,폭,수정일자,수정자\n';
     const toCsvCell = (v) => {
       if (v == null) return '';
       const s = String(v);
@@ -48,13 +89,14 @@ router.get('/export-excel', async (req, res) => {
       .map(
         (r) =>
           [
-            toCsvCell(r.name),
-            toCsvCell(r.code),
+            toCsvCell(r.semi_product_type),
+            toCsvCell(r.vehicle_code),
+            toCsvCell(r.part_code),
             toCsvCell(r.color_code),
-            toCsvCell(r.color_name),
+            toCsvCell(r.supplier_name),
+            toCsvCell(r.ratio),
             toCsvCell(r.thickness),
             toCsvCell(r.width),
-            toCsvCell(r.length),
             toCsvCell(r.updated_at ? new Date(r.updated_at).toISOString().slice(0, 19).replace('T', ' ') : ''),
             toCsvCell(r.updated_by),
           ].join(',')
@@ -72,24 +114,52 @@ router.get('/export-excel', async (req, res) => {
 });
 
 /**
- * 목록 조회 (삭제 플래그 N만, 검색: name, code)
- * GET /api/delivery-semi-products?name=&code=&page=1&limit=20
+ * 목록 조회 (삭제 플래그 N만)
+ * GET /api/delivery-semi-products?vehicleCode=&partCode=&colorCode=&supplierName=&page=1&limit=20
  */
 export async function listHandler(req, res) {
   try {
-    const { name = '', code = '', page = 1, limit = 20 } = req.query;
+    const {
+      vehicleCode = '',
+      partCode = '',
+      colorCode = '',
+      supplierName = '',
+      semiProductType = '',
+      semiProductTypeName = '',
+      page = 1,
+      limit = 20,
+    } = req.query;
     const offset = (Math.max(1, parseInt(page, 10)) - 1) * Math.min(100, Math.max(1, parseInt(limit, 10)));
     const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10)));
 
     let where = 'WHERE deleted = ?';
     const params = ['N'];
-    if (name && String(name).trim()) {
-      where += ' AND name LIKE ?';
-      params.push(`%${String(name).trim()}%`);
+    if (vehicleCode && String(vehicleCode).trim()) {
+      where += ' AND vehicle_code = ?';
+      params.push(String(vehicleCode).trim());
     }
-    if (code && String(code).trim()) {
-      where += ' AND code LIKE ?';
-      params.push(`%${String(code).trim()}%`);
+    if (partCode && String(partCode).trim()) {
+      where += ' AND part_code = ?';
+      params.push(String(partCode).trim());
+    }
+    if (colorCode && String(colorCode).trim()) {
+      where += ' AND color_code = ?';
+      params.push(String(colorCode).trim());
+    }
+    if (supplierName && String(supplierName).trim()) {
+      where += ' AND supplier_name LIKE ?';
+      params.push(`%${String(supplierName).trim()}%`);
+    }
+    if (semiProductType && String(semiProductType).trim()) {
+      const typeCode = String(semiProductType).trim();
+      const typeName = String(semiProductTypeName || '').trim();
+      if (typeName) {
+        where += ' AND (semi_product_type = ? OR semi_product_type = ?)';
+        params.push(typeCode, typeName);
+      } else {
+        where += ' AND semi_product_type = ?';
+        params.push(typeCode);
+      }
     }
 
     const [rows] = await getPool().query(
@@ -136,53 +206,56 @@ router.get('/:id', async (req, res) => {
 /**
  * 등록
  * POST /api/delivery-semi-products
- * 필수: name, code, updatedBy
- * 선택: color_code, color_name, thickness, width, length
+ * 필수: updatedBy
+ * 선택: code, semi_product_type, vehicle_code, part_code, supplier_name, ratio, color_code, color_name, thickness, width
  */
 router.post('/', async (req, res) => {
   try {
     const {
-      name,
       code,
+      semi_product_type = null,
+      vehicle_code = null,
+      part_code = null,
+      supplier_name = null,
+      ratio = null,
       color_code = null,
       color_name = null,
       thickness = null,
       width = null,
-      length = null,
       updatedBy = null,
     } = req.body || {};
 
-    if (!name || String(name).trim() === '') {
-      return res.status(400).json({ error: '반제품 이름은 필수입니다.' });
-    }
-    if (!code || String(code).trim() === '') {
-      return res.status(400).json({ error: '반제품 코드는 필수입니다.' });
-    }
     if (updatedBy == null || String(updatedBy).trim() === '') {
       return res.status(400).json({ error: '수정자는 필수입니다.' });
     }
 
-    // 코드 중복 검사
-    const [dup] = await getPool().query(
-      `SELECT id FROM \`${TABLE}\` WHERE code = ? AND deleted = 'N'`,
-      [String(code).trim()]
-    );
-    if (dup.length > 0) {
-      return res.status(400).json({ error: '이미 사용 중인 반제품 코드입니다.' });
+    const codeTrimmed = code != null && String(code).trim() !== '' ? String(code).trim() : null;
+    if (codeTrimmed != null) {
+      const [dup] = await getPool().query(
+        `SELECT id FROM \`${TABLE}\` WHERE code = ? AND deleted = 'N'`,
+        [codeTrimmed]
+      );
+      if (dup.length > 0) {
+        return res.status(400).json({ error: '이미 사용 중인 반제품 코드입니다.' });
+      }
     }
 
     const updatedByTrimmed = String(updatedBy).trim();
     const [result] = await getPool().query(
-      `INSERT INTO \`${TABLE}\` (name, code, color_code, color_name, thickness, width, \`length\`, updated_at, updated_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)`,
+      `INSERT INTO \`${TABLE}\` (name, code, semi_product_type, vehicle_code, part_code, supplier_name, ratio, color_code, color_name, thickness, width, updated_at, updated_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)`,
       [
-        String(name).trim(),
-        String(code).trim(),
+        null,
+        codeTrimmed,
+        semi_product_type != null && String(semi_product_type).trim() !== '' ? String(semi_product_type).trim() : null,
+        vehicle_code != null && String(vehicle_code).trim() !== '' ? String(vehicle_code).trim() : null,
+        part_code != null && String(part_code).trim() !== '' ? String(part_code).trim() : null,
+        supplier_name != null && String(supplier_name).trim() !== '' ? String(supplier_name).trim() : null,
+        toNullableInt(ratio),
         color_code != null ? String(color_code).trim() : null,
         color_name != null ? String(color_name).trim() : null,
-        thickness != null ? thickness : null,
-        width != null ? width : null,
-        length != null ? length : null,
+        toNullableTwoDecimal(thickness),
+        toNullableInt(width),
         updatedByTrimmed,
       ]
     );
@@ -210,13 +283,16 @@ router.patch('/:id', async (req, res) => {
     const id = parseInt(req.params.id, 10);
     if (Number.isNaN(id)) return res.status(400).json({ error: '잘못된 ID입니다.' });
     const {
-      name,
       code,
+      semi_product_type,
+      vehicle_code,
+      part_code,
+      supplier_name,
+      ratio,
       color_code,
       color_name,
       thickness,
       width,
-      length,
       updatedBy,
     } = req.body || {};
 
@@ -226,28 +302,44 @@ router.patch('/:id', async (req, res) => {
     );
     if (!existing.length) return res.status(404).json({ error: '반제품을 찾을 수 없습니다.' });
 
-    // 코드 중복 검사 (변경 시)
     if (code !== undefined) {
-      if (String(code).trim() === '') return res.status(400).json({ error: '반제품 코드는 필수입니다.' });
-      const [dup] = await getPool().query(
-        `SELECT id FROM \`${TABLE}\` WHERE code = ? AND deleted = 'N' AND id != ?`,
-        [String(code).trim(), id]
-      );
-      if (dup.length > 0) {
-        return res.status(400).json({ error: '이미 사용 중인 반제품 코드입니다.' });
+      const codeTrimmed = String(code).trim();
+      if (codeTrimmed !== '') {
+        const [dup] = await getPool().query(
+          `SELECT id FROM \`${TABLE}\` WHERE code = ? AND deleted = 'N' AND id != ?`,
+          [codeTrimmed, id]
+        );
+        if (dup.length > 0) {
+          return res.status(400).json({ error: '이미 사용 중인 반제품 코드입니다.' });
+        }
       }
     }
 
     const updates = [];
     const params = [];
-    if (name !== undefined) {
-      if (String(name).trim() === '') return res.status(400).json({ error: '반제품 이름은 필수입니다.' });
-      updates.push('name = ?');
-      params.push(String(name).trim());
-    }
     if (code !== undefined) {
       updates.push('code = ?');
-      params.push(String(code).trim());
+      params.push(String(code).trim() !== '' ? String(code).trim() : null);
+    }
+    if (semi_product_type !== undefined) {
+      updates.push('semi_product_type = ?');
+      params.push(semi_product_type != null && String(semi_product_type).trim() !== '' ? String(semi_product_type).trim() : null);
+    }
+    if (vehicle_code !== undefined) {
+      updates.push('vehicle_code = ?');
+      params.push(vehicle_code != null && String(vehicle_code).trim() !== '' ? String(vehicle_code).trim() : null);
+    }
+    if (part_code !== undefined) {
+      updates.push('part_code = ?');
+      params.push(part_code != null && String(part_code).trim() !== '' ? String(part_code).trim() : null);
+    }
+    if (supplier_name !== undefined) {
+      updates.push('supplier_name = ?');
+      params.push(supplier_name != null && String(supplier_name).trim() !== '' ? String(supplier_name).trim() : null);
+    }
+    if (ratio !== undefined) {
+      updates.push('ratio = ?');
+      params.push(toNullableInt(ratio));
     }
     if (color_code !== undefined) {
       updates.push('color_code = ?');
@@ -259,15 +351,11 @@ router.patch('/:id', async (req, res) => {
     }
     if (thickness !== undefined) {
       updates.push('thickness = ?');
-      params.push(thickness != null ? thickness : null);
+      params.push(toNullableTwoDecimal(thickness));
     }
     if (width !== undefined) {
       updates.push('width = ?');
-      params.push(width != null ? width : null);
-    }
-    if (length !== undefined) {
-      updates.push('`length` = ?');
-      params.push(length != null ? length : null);
+      params.push(toNullableInt(width));
     }
     if (updatedBy !== undefined) {
       updates.push('updated_by = ?');
@@ -301,16 +389,25 @@ router.delete('/:id', async (req, res) => {
     const id = parseInt(req.params.id, 10);
     if (Number.isNaN(id)) return res.status(400).json({ error: '잘못된 ID입니다.' });
 
-    // 참조 검사
-    const [refSupplier] = await getPool().query(
-      `SELECT COUNT(*) AS cnt FROM delivery_supplier_semi_products WHERE semi_product_id = ?`,
-      [id]
-    );
-    const [refRequest] = await getPool().query(
-      `SELECT COUNT(*) AS cnt FROM delivery_request_items WHERE item_id = ? AND item_type = 'semi'`,
-      [id]
-    );
-    if ((refSupplier[0]?.cnt || 0) > 0 || (refRequest[0]?.cnt || 0) > 0) {
+    let supplierCnt = 0;
+    try {
+      const [refSupplier] = await getPool().query(
+        `SELECT COUNT(*) AS cnt FROM delivery_supplier_semi_products WHERE semi_product_id = ?`,
+        [id]
+      );
+      supplierCnt = Number(refSupplier[0]?.cnt ?? 0);
+    } catch (err) {
+      if (err.code === 'ER_NO_SUCH_TABLE') {
+        logger.warn('delivery-semi-product delete: delivery_supplier_semi_products missing, ref count 0', {
+          id,
+          message: err.message,
+        });
+      } else {
+        throw err;
+      }
+    }
+    const requestCnt = await countDeliveryRequestItemRefs(getPool(), id, 'semi');
+    if (supplierCnt > 0 || requestCnt > 0) {
       return res.status(400).json({ error: '해당 반제품을 사용하는 곳이 있어 삭제할 수 없습니다.' });
     }
 

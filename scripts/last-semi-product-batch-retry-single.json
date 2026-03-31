@@ -1,0 +1,19 @@
+{
+  "source": "manual-retry-single-row",
+  "processedAt": "2026-03-25T10:26:03.877Z",
+  "payload": {
+    "excelRow": 157,
+    "semi_product_type": "하지",
+    "code": "10415225",
+    "car": "LX2",
+    "part": "CTR RR",
+    "color": "NNB",
+    "vendor": "공용 사용",
+    "thickness": 0.25,
+    "width": 1180
+  },
+  "result": {
+    "ok": true,
+    "insertId": 305
+  }
+}

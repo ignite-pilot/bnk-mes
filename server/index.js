@@ -19,11 +19,13 @@ import deliverySupplierRouter, { listHandler as deliverySupplierList } from './r
 import deliveryAffiliateRouter, { listHandler as deliveryAffiliateList } from './routes/delivery-affiliate.js';
 import deliveryWarehouseRouter, { listHandler as deliveryWarehouseList } from './routes/delivery-warehouse.js';
 import deliveryRequestRouter, { listHandler as deliveryRequestList, exportExcel as deliveryRequestExportExcel } from './routes/delivery-request.js';
+import chatRouter from './routes/chat.js';
 import logger from './lib/logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3000;
+const projectRoot = path.join(__dirname, '..');
 
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({ origin: true, credentials: true }));
@@ -40,6 +42,7 @@ app.use('/api/material-stock', materialStockRouter);
 app.get('/api/material-inbound/export-excel', materialInboundExportExcel);
 app.get('/api/material-inbound', materialInboundList);
 app.use('/api/material-inbound', materialInboundRouter);
+app.use('/api/chat', chatRouter);
 
 app.use('/api/delivery-vehicles', deliveryVehicleRouter);
 app.get('/api/delivery-finished-products', deliveryFinishedProductList);
@@ -56,26 +59,43 @@ app.get('/api/delivery-requests/export-excel', deliveryRequestExportExcel);
 app.get('/api/delivery-requests', deliveryRequestList);
 app.use('/api/delivery-requests', deliveryRequestRouter);
 
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../dist')));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../dist/index.html'));
+function mountErrorHandler() {
+  // eslint-disable-next-line no-unused-vars -- Express error handler signature
+  app.use((err, req, res, next) => {
+    logger.error(err.message, { stack: err.stack });
+    res.status(500).json({ error: 'Internal Server Error' });
   });
 }
-
-// eslint-disable-next-line no-unused-vars
-app.use((err, req, res, next) => {
-  logger.error(err.message, { stack: err.stack });
-  res.status(500).json({ error: 'Internal Server Error' });
-});
 
 if (process.env.NODE_ENV !== 'test') {
   (async () => {
     await initDb();
+
+    if (process.env.NODE_ENV === 'production') {
+      app.use(express.static(path.join(projectRoot, 'dist')));
+      app.get('*', (req, res) => {
+        res.sendFile(path.join(projectRoot, 'dist/index.html'));
+      });
+    } else {
+      const { createServer: createViteServer } = await import('vite');
+      const vite = await createViteServer({
+        root: projectRoot,
+        appType: 'spa',
+        server: { middlewareMode: true },
+      });
+      app.use(vite.middlewares);
+    }
+
+    mountErrorHandler();
+
     app.listen(PORT, () => {
-      logger.info(`Server running on port ${PORT}`);
+      logger.info(`Server running on port ${PORT}`, {
+        mode: process.env.NODE_ENV === 'production' ? 'production' : 'development+vite',
+      });
     });
   })();
+} else {
+  mountErrorHandler();
 }
 
 export default app;

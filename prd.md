@@ -2,7 +2,7 @@
 - 이 프로젝트는 생산 관리 시스템이야
 - 모든 작업은 Sequential Thinking을 사용해서 수행해 주세요.
 - 디자인 컨셉은 Simple한 디자인으로 해 주세요.
-- 회원 연동은 ig-member project를 연동해줘. git에 read.me 파일을 보면 돼
+- 회원 연동은 ig-member project를 연동해줘. github에 read.me 파일을 보면 돼
 * 개발 Guide는 CommonWebDevGuide.md 파일을 참고해줘
 - 전체적인 기능
   - 아래 메뉴 구성 (클릭 하면 빈 페이지 연결)을 해주고, 회원 기능만 구축

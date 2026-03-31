@@ -1,0 +1,5 @@
+- 일괄 등록: `node scripts/import-semi-products-from-xlsx.js <xlsx경로> [반제품종류코드]` — 첫 번째 시트만 사용. `[반제품종류코드]` 생략 시 `SEMI_PRODUCT_TYPE` 환경변수 또는 기본 `하지`
+- 차량, 부위 코드, 색상 코드가 매핑이 안되는 것 실패로 처리
+- 셀 문자열 안의 \r\n 은 **한 칸 공백(스페이스 1개)** 으로 치환한 뒤, 연속 공백은 하나로 합침
+- 빈 공란이 여러개 있을 경우 공란 1개로 처리
+- 일괄 등록 후 실패 행만 다시 넣을 때: `node scripts/retry-semi-products-from-failures.js` (기본: `scripts/last-semi-product-batch-failures.json` 의 행 번호만 재시도)

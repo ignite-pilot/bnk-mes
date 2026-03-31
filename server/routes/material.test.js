@@ -45,6 +45,13 @@ describe('원자재 API', () => {
       await request(app).get('/api/material?kindId=1&name=plate&page=1&limit=10');
       expect(mockQuery).toHaveBeenCalled();
     });
+
+    it('목록 조회 WHERE에 등록일자 범위(created_at >=) 조건을 넣지 않는다', async () => {
+      mockQuery.mockResolvedValueOnce([[]]).mockResolvedValueOnce([[{ total: 0 }]]);
+      await request(app).get('/api/material');
+      const listSql = mockQuery.mock.calls[0][0];
+      expect(String(listSql)).not.toMatch(/created_at\s*>/);
+    });
   });
 
   describe('GET /api/material/types', () => {
@@ -67,6 +74,13 @@ describe('원자재 API', () => {
       expect(res.headers['content-type']).toMatch(/csv/);
       expect(res.headers['content-disposition']).toMatch(/raw_materials\.csv/);
       expect(res.text).toContain('원자재 종류');
+    });
+
+    it('엑셀 조회 WHERE에 등록일자 범위(created_at >=) 조건을 넣지 않는다', async () => {
+      mockQuery.mockResolvedValueOnce([[]]);
+      await request(app).get('/api/material/export-excel');
+      const sql = mockQuery.mock.calls[0][0];
+      expect(String(sql)).not.toMatch(/created_at\s*>/);
     });
   });
 

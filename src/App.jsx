@@ -18,6 +18,7 @@ import DeliverySupplier from './pages/delivery/DeliverySupplier';
 import DeliveryAffiliate from './pages/delivery/DeliveryAffiliate';
 import DeliveryWarehouse from './pages/delivery/DeliveryWarehouse';
 import DeliveryRequest from './pages/delivery/DeliveryRequest';
+import ChatPanel from './components/ChatPanel';
 import { menuConfig } from './config/menu';
 
 function App() {
@@ -67,6 +68,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
+      <ChatPanel />
     </AuthProvider>
   );
 }

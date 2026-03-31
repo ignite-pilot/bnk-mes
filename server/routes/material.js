@@ -5,18 +5,10 @@
 import { Router } from 'express';
 import { getPool } from '../lib/db.js';
 import logger from '../lib/logger.js';
-import { toStartOfDayString, toEndOfDayString } from '../lib/dateUtils.js';
 
 const router = Router();
 const TABLE = 'raw_materials';
 const TYPES_TABLE = 'material_types';
-
-function defaultDateRange() {
-  const end = new Date();
-  const start = new Date();
-  start.setDate(start.getDate() - 7);
-  return { start, end };
-}
 
 const LIST_SELECT = `SELECT rm.id, rm.kind_id, mt.name AS kind, rm.name, rm.color, rm.thickness, rm.width, rm.\`length\`,
   rm.supplier_safety_stock, rm.bnk_warehouse_safety_stock,
@@ -36,13 +28,9 @@ router.get('/types', async (req, res) => {
 
 router.get('/export-excel', async (req, res) => {
   try {
-    const { kindId = '', name = '', startDate, endDate } = req.query;
-    const { start, end } = defaultDateRange();
-    const from = toStartOfDayString(startDate ? new Date(startDate) : start);
-    const to = toEndOfDayString(endDate ? new Date(endDate) : end);
-
-    let where = 'WHERE rm.deleted = ? AND rm.created_at >= ? AND rm.created_at <= ?';
-    const params = ['N', from, to];
+    const { kindId = '', name = '' } = req.query;
+    let where = 'WHERE rm.deleted = ?';
+    const params = ['N'];
     const kindIdNum = parseInt(kindId, 10);
     if (!Number.isNaN(kindIdNum) && kindIdNum > 0) {
       where += ' AND rm.kind_id = ?';
@@ -97,15 +85,12 @@ router.get('/export-excel', async (req, res) => {
 
 router.get('/', async (req, res) => {
   try {
-    const { kindId = '', name = '', startDate, endDate, page = 1, limit = 20 } = req.query;
-    const { start, end } = defaultDateRange();
-    const from = toStartOfDayString(startDate ? new Date(startDate) : start);
-    const to = toEndOfDayString(endDate ? new Date(endDate) : end);
+    const { kindId = '', name = '', page = 1, limit = 20 } = req.query;
     const offset = (Math.max(1, parseInt(page, 10)) - 1) * Math.min(100, Math.max(1, parseInt(limit, 10)));
     const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10)));
 
-    let where = 'WHERE rm.deleted = ? AND rm.created_at >= ? AND rm.created_at <= ?';
-    const params = ['N', from, to];
+    let where = 'WHERE rm.deleted = ?';
+    const params = ['N'];
     const kindIdNum = parseInt(kindId, 10);
     if (!Number.isNaN(kindIdNum) && kindIdNum > 0) {
       where += ' AND rm.kind_id = ?';

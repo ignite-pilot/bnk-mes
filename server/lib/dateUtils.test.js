@@ -8,6 +8,7 @@ import {
   toDateString,
   toStartOfDayString,
   toEndOfDayString,
+  optionalSqlDateRange,
 } from './dateUtils.js';
 
 describe('dateUtils', () => {
@@ -74,6 +75,19 @@ describe('dateUtils', () => {
       expect(s.getMinutes()).toBe(0);
       expect(s.getSeconds()).toBe(0);
       expect(s.getMilliseconds()).toBe(0);
+    });
+  });
+
+  describe('optionalSqlDateRange', () => {
+    it('빈 문자열이면 null', () => {
+      expect(optionalSqlDateRange('', '')).toBeNull();
+      expect(optionalSqlDateRange(undefined, undefined)).toBeNull();
+    });
+    it('시작·종료가 있으면 from/to 문자열', () => {
+      const r = optionalSqlDateRange('2025-01-10', '2025-01-12');
+      expect(r).not.toBeNull();
+      expect(r.from).toMatch(/^2025-01-10 00:00:00$/);
+      expect(r.to).toMatch(/^2025-01-12 23:59:59$/);
     });
   });
 

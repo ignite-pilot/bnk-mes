@@ -1,0 +1,344 @@
+{
+  "sourceFile": "/Users/ignite/Downloads/완제품_빈셀채움.xlsx",
+  "total": 333,
+  "inserted": 291,
+  "failed": 42,
+  "failures": [
+    {
+      "row": 39,
+      "vehicleCode": "NX4PE",
+      "partCode": "UPR GARNISH\r\n(리얼스티치 4CVT)",
+      "colorCode": "NNB",
+      "affiliateName": "덕양 경주3공장",
+      "reason": "차량부위 미매칭: UPR GARNISH\r\n(리얼스티치 4CVT)"
+    },
+    {
+      "row": 40,
+      "vehicleCode": "NX4PE",
+      "partCode": "UPR GARNISH\r\n(리얼스티치 4CVT)",
+      "colorCode": "YFX",
+      "affiliateName": "덕양 경주3공장",
+      "reason": "차량부위 미매칭: UPR GARNISH\r\n(리얼스티치 4CVT)"
+    },
+    {
+      "row": 41,
+      "vehicleCode": "NX4PE",
+      "partCode": "UPR GARNISH\r\n(페이크 4CVT)",
+      "colorCode": "NNB",
+      "affiliateName": "덕양 경주3공장",
+      "reason": "차량부위 미매칭: UPR GARNISH\r\n(페이크 4CVT)"
+    },
+    {
+      "row": 42,
+      "vehicleCode": "NX4PE",
+      "partCode": "UPR GARNISH\r\n(페이크 4CVT)",
+      "colorCode": "YFX",
+      "affiliateName": "덕양 경주3공장",
+      "reason": "차량부위 미매칭: UPR GARNISH\r\n(페이크 4CVT)"
+    },
+    {
+      "row": 101,
+      "vehicleCode": "LX2 PE\r\n변경분",
+      "partCode": "MAIN",
+      "colorCode": "NNB",
+      "affiliateName": "한진피엘",
+      "reason": "차량코드 미매칭: LX2 PE\r\n변경분"
+    },
+    {
+      "row": 102,
+      "vehicleCode": "LX2 PE\r\n변경분",
+      "partCode": "DRV",
+      "colorCode": "NNB",
+      "affiliateName": "한진피엘",
+      "reason": "차량코드 미매칭: LX2 PE\r\n변경분"
+    },
+    {
+      "row": 103,
+      "vehicleCode": "LX2 PE\r\n변경분",
+      "partCode": "MAIN",
+      "colorCode": "YJY",
+      "affiliateName": "한진피엘",
+      "reason": "차량코드 미매칭: LX2 PE\r\n변경분"
+    },
+    {
+      "row": 104,
+      "vehicleCode": "LX2 PE\r\n변경분",
+      "partCode": "DRV",
+      "colorCode": "YJY",
+      "affiliateName": "한진피엘",
+      "reason": "차량코드 미매칭: LX2 PE\r\n변경분"
+    },
+    {
+      "row": 105,
+      "vehicleCode": "SX2\r\n사이즈변경분",
+      "partCode": "A/REST FRT",
+      "colorCode": "NNB",
+      "affiliateName": "한진피엘",
+      "reason": "차량코드 미매칭: SX2\r\n사이즈변경분"
+    },
+    {
+      "row": 106,
+      "vehicleCode": "SX2\r\n사이즈변경분",
+      "partCode": "A/REST FRT",
+      "colorCode": "T9Y",
+      "affiliateName": "한진피엘",
+      "reason": "차량코드 미매칭: SX2\r\n사이즈변경분"
+    },
+    {
+      "row": 107,
+      "vehicleCode": "634",
+      "partCode": "A/REST FRT",
+      "colorCode": "YPK",
+      "affiliateName": "한진피엘",
+      "reason": "차량코드 미매칭: 634"
+    },
+    {
+      "row": 108,
+      "vehicleCode": "SX2\r\n사이즈변경분",
+      "partCode": "A/REST FRT",
+      "colorCode": "SSS",
+      "affiliateName": "한진피엘",
+      "reason": "차량코드 미매칭: SX2\r\n사이즈변경분"
+    },
+    {
+      "row": 109,
+      "vehicleCode": "SX2\r\n사이즈변경분",
+      "partCode": "A/REST FRT",
+      "colorCode": "VHC",
+      "affiliateName": "한진피엘",
+      "reason": "차량코드 미매칭: SX2\r\n사이즈변경분"
+    },
+    {
+      "row": 110,
+      "vehicleCode": "SX2\r\n사이즈변경분",
+      "partCode": "A/REST RR",
+      "colorCode": "NNB",
+      "affiliateName": "한진피엘",
+      "reason": "차량코드 미매칭: SX2\r\n사이즈변경분"
+    },
+    {
+      "row": 111,
+      "vehicleCode": "SX2\r\n사이즈변경분",
+      "partCode": "A/REST RR",
+      "colorCode": "T9Y",
+      "affiliateName": "한진피엘",
+      "reason": "차량코드 미매칭: SX2\r\n사이즈변경분"
+    },
+    {
+      "row": 112,
+      "vehicleCode": "SX2\r\n사이즈변경분",
+      "partCode": "A/REST RR",
+      "colorCode": "YPK",
+      "affiliateName": "한진피엘",
+      "reason": "차량코드 미매칭: SX2\r\n사이즈변경분"
+    },
+    {
+      "row": 113,
+      "vehicleCode": "SX2\r\n사이즈변경분",
+      "partCode": "A/REST RR",
+      "colorCode": "SSS",
+      "affiliateName": "한진피엘",
+      "reason": "차량코드 미매칭: SX2\r\n사이즈변경분"
+    },
+    {
+      "row": 114,
+      "vehicleCode": "SX2\r\n사이즈변경분",
+      "partCode": "A/REST RR",
+      "colorCode": "VHC",
+      "affiliateName": "한진피엘",
+      "reason": "차량코드 미매칭: SX2\r\n사이즈변경분"
+    },
+    {
+      "row": 115,
+      "vehicleCode": "MX5",
+      "partCode": "A/REST RR (4CVT)\r\n기존사양",
+      "colorCode": "NNB",
+      "affiliateName": "범양",
+      "reason": "차량부위 미매칭: A/REST RR (4CVT)\r\n기존사양"
+    },
+    {
+      "row": 116,
+      "vehicleCode": "MX5",
+      "partCode": "A/REST RR (4CVT)\r\n기존사양",
+      "colorCode": "YSY",
+      "affiliateName": "범양",
+      "reason": "차량부위 미매칭: A/REST RR (4CVT)\r\n기존사양"
+    },
+    {
+      "row": 117,
+      "vehicleCode": "MX5",
+      "partCode": "A/REST RR (4CVT)\r\n기존사양",
+      "colorCode": "PCR",
+      "affiliateName": "범양",
+      "reason": "차량부위 미매칭: A/REST RR (4CVT)\r\n기존사양"
+    },
+    {
+      "row": 118,
+      "vehicleCode": "MX5",
+      "partCode": "A/REST UPR RR (4CVT)\r\n기존사양",
+      "colorCode": "NNB",
+      "affiliateName": "범양",
+      "reason": "차량부위 미매칭: A/REST UPR RR (4CVT)\r\n기존사양"
+    },
+    {
+      "row": 119,
+      "vehicleCode": "MX5",
+      "partCode": "A/REST UPR RR (4CVT)\r\n기존사양",
+      "colorCode": "YSY",
+      "affiliateName": "범양",
+      "reason": "차량부위 미매칭: A/REST UPR RR (4CVT)\r\n기존사양"
+    },
+    {
+      "row": 120,
+      "vehicleCode": "MX5",
+      "partCode": "A/REST UPR RR (4CVT)\r\n기존사양",
+      "colorCode": "PCR",
+      "affiliateName": "범양",
+      "reason": "차량부위 미매칭: A/REST UPR RR (4CVT)\r\n기존사양"
+    },
+    {
+      "row": 139,
+      "vehicleCode": "MX5",
+      "partCode": "A/REST RR (4CVT)\r\n변경사양",
+      "colorCode": "NNB",
+      "affiliateName": "범양",
+      "reason": "차량부위 미매칭: A/REST RR (4CVT)\r\n변경사양"
+    },
+    {
+      "row": 140,
+      "vehicleCode": "MX5",
+      "partCode": "A/REST RR (4CVT)\r\n변경사양",
+      "colorCode": "YSY",
+      "affiliateName": "범양",
+      "reason": "차량부위 미매칭: A/REST RR (4CVT)\r\n변경사양"
+    },
+    {
+      "row": 141,
+      "vehicleCode": "MX5",
+      "partCode": "A/REST RR (4CVT)\r\n변경사양",
+      "colorCode": "PCR",
+      "affiliateName": "범양",
+      "reason": "차량부위 미매칭: A/REST RR (4CVT)\r\n변경사양"
+    },
+    {
+      "row": 142,
+      "vehicleCode": "MX5",
+      "partCode": "A/REST UPR RR (4CVT)\r\n변경사양",
+      "colorCode": "NNB",
+      "affiliateName": "범양",
+      "reason": "차량부위 미매칭: A/REST UPR RR (4CVT)\r\n변경사양"
+    },
+    {
+      "row": 143,
+      "vehicleCode": "MX5",
+      "partCode": "A/REST UPR RR (4CVT)\r\n변경사양",
+      "colorCode": "YSY",
+      "affiliateName": "범양",
+      "reason": "차량부위 미매칭: A/REST UPR RR (4CVT)\r\n변경사양"
+    },
+    {
+      "row": 144,
+      "vehicleCode": "MX5",
+      "partCode": "A/REST UPR RR (4CVT)\r\n변경사양",
+      "colorCode": "PCR",
+      "affiliateName": "범양",
+      "reason": "차량부위 미매칭: A/REST UPR RR (4CVT)\r\n변경사양"
+    },
+    {
+      "row": 170,
+      "vehicleCode": "9533",
+      "partCode": "UPR STD",
+      "colorCode": "P2B",
+      "affiliateName": "공용",
+      "reason": "차량코드 미매칭: 9533"
+    },
+    {
+      "row": 252,
+      "vehicleCode": "TK1",
+      "partCode": "UPR/4CVT",
+      "colorCode": "DHP",
+      "affiliateName": "공용",
+      "reason": "색상 미매칭: DHP"
+    },
+    {
+      "row": 255,
+      "vehicleCode": "TK1",
+      "partCode": "UPR/가니쉬",
+      "colorCode": "DHP",
+      "affiliateName": "공용",
+      "reason": "색상 미매칭: DHP"
+    },
+    {
+      "row": 258,
+      "vehicleCode": "TK1",
+      "partCode": "UPR/가니쉬 FRT",
+      "colorCode": "DHP",
+      "affiliateName": "공용",
+      "reason": "색상 미매칭: DHP"
+    },
+    {
+      "row": 261,
+      "vehicleCode": "TK1",
+      "partCode": "UPR/가니쉬 RR",
+      "colorCode": "DHP",
+      "affiliateName": "공용",
+      "reason": "색상 미매칭: DHP"
+    },
+    {
+      "row": 288,
+      "vehicleCode": "LX3(변경)",
+      "partCode": "UPR FRT",
+      "colorCode": "NNB",
+      "affiliateName": "공용",
+      "reason": "차량코드 미매칭: LX3(변경)"
+    },
+    {
+      "row": 290,
+      "vehicleCode": "LX3(변경)",
+      "partCode": "UPR RR",
+      "colorCode": "NNB",
+      "affiliateName": "공용",
+      "reason": "차량코드 미매칭: LX3(변경)"
+    },
+    {
+      "row": 300,
+      "vehicleCode": "SP3",
+      "partCode": "UPR  4CVT",
+      "colorCode": "OVG",
+      "affiliateName": "공용",
+      "reason": "차량부위 미매칭: UPR  4CVT"
+    },
+    {
+      "row": 301,
+      "vehicleCode": "SP3",
+      "partCode": "UPR  4CVT",
+      "colorCode": "GYT",
+      "affiliateName": "공용",
+      "reason": "차량부위 미매칭: UPR  4CVT"
+    },
+    {
+      "row": 302,
+      "vehicleCode": "SP3",
+      "partCode": "UPR  4CVT",
+      "colorCode": "OVS",
+      "affiliateName": "공용",
+      "reason": "차량부위 미매칭: UPR  4CVT"
+    },
+    {
+      "row": 333,
+      "vehicleCode": "*RG3 EV 통합 규격외 추가 품목 별도  정리",
+      "partCode": "CTR 2CVT",
+      "colorCode": "OVS",
+      "affiliateName": "공용",
+      "reason": "차량코드 미매칭: *RG3 EV 통합 규격외 추가 품목 별도  정리"
+    },
+    {
+      "row": 334,
+      "vehicleCode": "차종",
+      "partCode": "부위",
+      "colorCode": "칼라",
+      "affiliateName": "업체",
+      "reason": "차량코드 미매칭: 차종; 차량부위 미매칭: 부위; 색상 미매칭: 칼라; 연계업체 미매칭: 업체"
+    }
+  ]
+}

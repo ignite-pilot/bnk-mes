@@ -45,6 +45,13 @@ describe('원자재 공급 업체 API', () => {
       await request(app).get('/api/material-suppliers?name=supplier&page=1&limit=10');
       expect(mockQuery).toHaveBeenCalled();
     });
+
+    it('목록 조회 WHERE에 수정/등록일 COALESCE 범위 조건을 넣지 않는다', async () => {
+      mockQuery.mockResolvedValueOnce([[]]).mockResolvedValueOnce([[{ total: 0 }]]);
+      await request(app).get('/api/material-suppliers');
+      const listSql = mockQuery.mock.calls[0][0];
+      expect(String(listSql)).not.toMatch(/COALESCE\(s\.updated_at, s\.created_at\)\s*>=/);
+    });
   });
 
   describe('GET /api/material-suppliers/export-excel', () => {
@@ -58,6 +65,13 @@ describe('원자재 공급 업체 API', () => {
       expect(res.headers['content-disposition']).toMatch(/raw_material_suppliers\.csv/);
       expect(res.text).toContain('업체 명');
     });
+
+    it('엑셀 조회 WHERE에 수정/등록일 COALESCE 범위 조건을 넣지 않는다', async () => {
+      mockQuery.mockResolvedValueOnce([[]]);
+      await request(app).get('/api/material-suppliers/export-excel');
+      const sql = mockQuery.mock.calls[0][0];
+      expect(String(sql)).not.toMatch(/COALESCE\(s\.updated_at, s\.created_at\)\s*>=/);
+    });
   });
 
   describe('GET /api/material-suppliers/:id', () => {
@@ -68,41 +82,47 @@ describe('원자재 공급 업체 API', () => {
       expect(res.body).toHaveProperty('error');
     });
 
-    it('단건 조회 시 raw_material_ids 포함', async () => {
+    it('단건 조회 시 raw_material_type_codes 포함', async () => {
       mockQuery
         .mockResolvedValueOnce([[{ id: 1, name: 'A업체', material_count: 1 }]])
-        .mockResolvedValueOnce([[{ raw_material_id: 10 }, { raw_material_id: 20 }]]);
+        .mockResolvedValueOnce([[{ raw_material_type_code: 'FABRIC' }, { raw_material_type_code: 'ADHESIVE' }]]);
       const res = await request(app).get('/api/material-suppliers/1');
       expect(res.status).toBe(200);
-      expect(res.body).toHaveProperty('raw_material_ids');
-      expect(res.body.raw_material_ids).toEqual([10, 20]);
+      expect(res.body).toHaveProperty('raw_material_type_codes');
+      expect(res.body.raw_material_type_codes).toEqual(['FABRIC', 'ADHESIVE']);
     });
   });
 
   describe('POST /api/material-suppliers', () => {
-    it('name/address 없으면 400', async () => {
+    it('name 없으면 400', async () => {
       const res = await request(app).post('/api/material-suppliers').send({});
       expect(res.status).toBe(400);
-      expect(res.body.error).toMatch(/필수|업체 명|주소/);
+      expect(res.body.error).toMatch(/필수|업체 명/);
     });
 
     it('수정자(updatedBy) 없으면 400', async () => {
       const res = await request(app)
         .post('/api/material-suppliers')
-        .send({ name: 'A업체', address: '서울시', manager_email: 'a@b.com' });
+        .send({ name: 'A업체' });
       expect(res.status).toBe(400);
       expect(res.body.error).toMatch(/수정자/);
     });
 
-    it('담당자 이메일(manager_email) 없으면 400', async () => {
+    it('주소/담당자 이메일 없이도 등록된다', async () => {
+      mockQuery
+        .mockResolvedValueOnce([{ insertId: 2 }])
+        .mockResolvedValueOnce([[{ id: 2, name: 'B업체', address: '', manager_email: null }]])
+        .mockResolvedValueOnce([[]]);
       const res = await request(app)
         .post('/api/material-suppliers')
-        .send({ name: 'A업체', address: '서울시', updatedBy: '홍길동' });
-      expect(res.status).toBe(400);
-      expect(res.body.error).toMatch(/담당자 이메일/);
+        .send({ name: 'B업체', updatedBy: '홍길동' });
+      expect(res.status).toBe(201);
+      expect(res.body).toHaveProperty('id', 2);
+      expect(res.body).toHaveProperty('address', '');
+      expect(res.body).toHaveProperty('manager_email', null);
     });
 
-    it('name/address/manager_email/updatedBy 있으면 201 및 생성 데이터 반환', async () => {
+    it('name/updatedBy 있으면 201 및 생성 데이터 반환', async () => {
       mockQuery
         .mockResolvedValueOnce([{ insertId: 1 }])
         .mockResolvedValueOnce([[{ id: 1, name: 'A업체', address: '서울시', manager_email: 'a@b.com' }]])
@@ -113,6 +133,25 @@ describe('원자재 공급 업체 API', () => {
       expect(res.status).toBe(201);
       expect(res.body).toHaveProperty('id', 1);
       expect(res.body).toHaveProperty('name', 'A업체');
+    });
+
+    it('raw_material_type_codes를 전달하면 코드 테이블에 저장한다', async () => {
+      mockQuery
+        .mockResolvedValueOnce([{ insertId: 3 }])
+        .mockResolvedValueOnce([{}])
+        .mockResolvedValueOnce([[{ id: 3, name: 'C업체', address: '서울시', manager_email: 'c@b.com' }]])
+        .mockResolvedValueOnce([[{ raw_material_type_code: 'FABRIC' }, { raw_material_type_code: 'FOAM' }]]);
+      const res = await request(app)
+        .post('/api/material-suppliers')
+        .send({
+          name: 'C업체',
+          address: '서울시',
+          manager_email: 'c@b.com',
+          updatedBy: '홍길동',
+          raw_material_type_codes: ['FABRIC', 'FOAM'],
+        });
+      expect(res.status).toBe(201);
+      expect(res.body.raw_material_type_codes).toEqual(['FABRIC', 'FOAM']);
     });
   });
 

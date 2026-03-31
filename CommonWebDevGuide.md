@@ -7,6 +7,8 @@
 - Health Check를 위한 API를 "/api/health" 이런 Path로 반드시 만들어줘
 - 실제 코딩을 시작하기에 앞서, 프로젝트 이름으로 Git Repository 생성과 DB 생성부터을 꼭 먼저 해줘. 접속 정보는 아래 정보를 참고해줘
 - 작업이나 실행해 필요한 것들을 알아서 설치해줘
+- BE,FE 디버깅용 로그는 CloudWatch를 사용하도록 해줘
+- DB는 Pool 기능으로 해주고 Pool 사이즈는 작게 해줘
 
 # Git 정보
 - Github에 Project 이름으로 Repository를 만들어줘. 

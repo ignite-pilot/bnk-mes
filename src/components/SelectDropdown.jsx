@@ -8,7 +8,8 @@
  * - maxSelect: 최대 선택 개수 (기본 1 = 단일 선택, 2 이상 = 체크박스 다중 선택)
  * - style: 외부 wrapper 스타일
  */
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 
 const ddStyles = {
   wrapper: {
@@ -47,11 +48,9 @@ const ddStyles = {
     flexShrink: 0,
   },
   panel: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
-    zIndex: 50,
+    position: 'fixed',
+    zIndex: 10050,
+    boxSizing: 'border-box',
     background: '#fff',
     border: '1px solid #cbd5e1',
     borderRadius: '4px',
@@ -126,15 +125,24 @@ function SelectDropdown({
   disabled = false,
   maxSelect = 1,
   style,
+  triggerStyle,
 }) {
   const isMulti = maxSelect > 1;
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [hoverIdx, setHoverIdx] = useState(-1);
   const ref = useRef(null);
+  const panelRef = useRef(null);
   const searchRef = useRef(null);
+  const [panelBox, setPanelBox] = useState(null);
 
   const showSearch = searchable !== undefined ? searchable : options.length >= 6;
+
+  const updatePanelPosition = useCallback(() => {
+    if (!ref.current) return;
+    const r = ref.current.getBoundingClientRect();
+    setPanelBox({ top: r.bottom + 2, left: r.left, width: r.width });
+  }, []);
 
   // 다중 선택 시 value를 배열로 정규화
   const selectedValues = useMemo(() => {
@@ -146,20 +154,34 @@ function SelectDropdown({
 
   useEffect(() => {
     const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) {
-        setOpen(false);
-        setSearch('');
-      }
+      if (ref.current?.contains(e.target)) return;
+      if (panelRef.current?.contains(e.target)) return;
+      setOpen(false);
+      setSearch('');
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   useEffect(() => {
-    if (open && showSearch && searchRef.current) {
+    if (!open) {
+      setPanelBox(null);
+      return;
+    }
+    updatePanelPosition();
+    window.addEventListener('scroll', updatePanelPosition, true);
+    window.addEventListener('resize', updatePanelPosition);
+    return () => {
+      window.removeEventListener('scroll', updatePanelPosition, true);
+      window.removeEventListener('resize', updatePanelPosition);
+    };
+  }, [open, updatePanelPosition]);
+
+  useEffect(() => {
+    if (open && panelBox && showSearch && searchRef.current) {
       searchRef.current.focus();
     }
-  }, [open]);
+  }, [open, panelBox, showSearch]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return options;
@@ -239,6 +261,7 @@ function SelectDropdown({
           ...(open ? ddStyles.triggerOpen : {}),
           ...(disabled ? { opacity: 0.6, cursor: 'not-allowed' } : {}),
           ...(!selectedLabel ? ddStyles.triggerPlaceholder : {}),
+          ...(triggerStyle || {}),
         }}
         onClick={() => {
           if (!disabled) {
@@ -253,77 +276,93 @@ function SelectDropdown({
         </span>
         <span style={ddStyles.arrow}>{open ? '▲' : '▼'}</span>
       </button>
-      {open && (
-        <div style={ddStyles.panel} onMouseDown={(e) => e.preventDefault()} onClick={(e) => e.stopPropagation()}>
-          {isMulti && (
-            <div style={ddStyles.multiInfo}>
-              {selectedValues.length}/{maxSelect}개 선택
-            </div>
-          )}
-          {showSearch && (
-            <input
-              ref={searchRef}
-              type="text"
-              style={ddStyles.search}
-              placeholder="검색..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setHoverIdx(-1);
-              }}
-            />
-          )}
-          <div style={ddStyles.list}>
-            {filtered.length === 0 ? (
-              <div style={ddStyles.empty}>
-                {options.length === 0 ? '항목이 없습니다.' : '검색 결과가 없습니다.'}
+      {open &&
+        panelBox &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            ref={panelRef}
+            style={{
+              ...ddStyles.panel,
+              top: panelBox.top,
+              left: panelBox.left,
+              width: panelBox.width,
+            }}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {isMulti && (
+              <div style={ddStyles.multiInfo}>
+                {selectedValues.length}/{maxSelect}개 선택
               </div>
-            ) : isMulti ? (
-              filtered.map((opt, i) => {
-                const isChecked = selectedValues.includes(opt.value);
-                const isMaxed = !isChecked && selectedValues.length >= maxSelect;
-                return (
+            )}
+            {showSearch && (
+              <input
+                ref={searchRef}
+                type="text"
+                style={ddStyles.search}
+                placeholder="검색..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setHoverIdx(-1);
+                }}
+              />
+            )}
+            <div style={ddStyles.list}>
+              {filtered.length === 0 ? (
+                <div style={ddStyles.empty}>
+                  {options.length === 0 ? '항목이 없습니다.' : '검색 결과가 없습니다.'}
+                </div>
+              ) : isMulti ? (
+                filtered.map((opt, i) => {
+                  const isChecked = selectedValues.includes(opt.value);
+                  const isMaxed = !isChecked && selectedValues.length >= maxSelect;
+                  return (
+                    <div
+                      key={`${opt.value}-${i}`}
+                      style={{
+                        ...ddStyles.item,
+                        ...(isChecked ? ddStyles.itemSelected : {}),
+                        ...(i === hoverIdx && !isMaxed ? ddStyles.itemHover : {}),
+                        ...(isMaxed ? ddStyles.itemDisabled : {}),
+                      }}
+                      onClick={() => {
+                        if (!isMaxed || isChecked) handleToggle(opt.value);
+                      }}
+                      onMouseEnter={() => setHoverIdx(i)}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        disabled={isMaxed && !isChecked}
+                        readOnly
+                        style={ddStyles.checkbox}
+                      />
+                      {opt.label}
+                    </div>
+                  );
+                })
+              ) : (
+                filtered.map((opt, i) => (
                   <div
                     key={`${opt.value}-${i}`}
                     style={{
                       ...ddStyles.item,
-                      ...(isChecked ? ddStyles.itemSelected : {}),
-                      ...(i === hoverIdx && !isMaxed ? ddStyles.itemHover : {}),
-                      ...(isMaxed ? ddStyles.itemDisabled : {}),
+                      ...(String(opt.value) === String(value) ? ddStyles.itemSelected : {}),
+                      ...(i === hoverIdx ? ddStyles.itemHover : {}),
                     }}
-                    onClick={() => { if (!isMaxed || isChecked) handleToggle(opt.value); }}
+                    onClick={(e) => handleSelect(opt.value, e)}
                     onMouseEnter={() => setHoverIdx(i)}
                   >
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      disabled={isMaxed && !isChecked}
-                      readOnly
-                      style={ddStyles.checkbox}
-                    />
                     {opt.label}
                   </div>
-                );
-              })
-            ) : (
-              filtered.map((opt, i) => (
-                <div
-                  key={`${opt.value}-${i}`}
-                  style={{
-                    ...ddStyles.item,
-                    ...(String(opt.value) === String(value) ? ddStyles.itemSelected : {}),
-                    ...(i === hoverIdx ? ddStyles.itemHover : {}),
-                  }}
-                  onClick={(e) => handleSelect(opt.value, e)}
-                  onMouseEnter={() => setHoverIdx(i)}
-                >
-                  {opt.label}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
+                ))
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

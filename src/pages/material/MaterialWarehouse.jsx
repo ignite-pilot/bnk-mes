@@ -15,13 +15,6 @@ function formatDate(d) {
   return dt.toISOString().slice(0, 10);
 }
 
-function defaultDateRange() {
-  const end = new Date();
-  const start = new Date();
-  start.setDate(start.getDate() - 7);
-  return { startDate: formatDate(start), endDate: formatDate(end) };
-}
-
 const PAGE_SIZES = [10, 15, 20, 50, 100];
 
 /** 선택된 원자재 ID 배열과 전체 원자재 목록으로 표시 문자열 반환 */
@@ -49,7 +42,6 @@ function MaterialWarehouse() {
   const [search, setSearch] = useState({
     supplierId: '',
     warehouseName: '',
-    ...defaultDateRange(),
   });
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState('add');
@@ -110,8 +102,6 @@ function MaterialWarehouse() {
       const q = new URLSearchParams({
         page: String(page),
         limit: String(limit),
-        startDate: search.startDate,
-        endDate: search.endDate,
       });
       if (search.supplierId) q.set('supplierId', search.supplierId);
       if (search.warehouseName.trim()) q.set('warehouseName', search.warehouseName.trim());
@@ -135,7 +125,7 @@ function MaterialWarehouse() {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, search.startDate, search.endDate, search.supplierId, search.warehouseName]);
+  }, [page, limit, search.supplierId, search.warehouseName]);
 
   useEffect(() => {
     fetchList();
@@ -150,14 +140,7 @@ function MaterialWarehouse() {
   }, []);
 
   useEffect(() => {
-    const start = new Date();
-    start.setFullYear(start.getFullYear() - 1);
-    const q = new URLSearchParams({
-      startDate: formatDate(start),
-      endDate: formatDate(new Date()),
-      limit: '500',
-    });
-    fetch(`${MATERIAL_API}?${q}`)
+    fetch(`${MATERIAL_API}?limit=500`)
       .then((r) => r.json())
       .then((d) => setMaterials(d.list || []))
       .catch(() => setMaterials([]));
@@ -168,7 +151,7 @@ function MaterialWarehouse() {
     setPage(1);
     fetchList();
   };
-  const initialSearch = { supplierId: '', warehouseName: '', ...defaultDateRange() };
+  const initialSearch = { supplierId: '', warehouseName: '' };
   const handleResetSearch = () => {
     setSearch(initialSearch);
     setPage(1);
@@ -265,10 +248,6 @@ function MaterialWarehouse() {
       setFormError('창고 이름은 필수입니다.');
       return;
     }
-    if (!formData.address?.trim()) {
-      setFormError('주소는 필수입니다.');
-      return;
-    }
     setFormSaving(true);
     setFormError('');
     try {
@@ -363,10 +342,7 @@ function MaterialWarehouse() {
   };
 
   const handleExcelDownload = async () => {
-    const q = new URLSearchParams({
-      startDate: search.startDate,
-      endDate: search.endDate,
-    });
+    const q = new URLSearchParams();
     if (search.supplierId) q.set('supplierId', search.supplierId);
     if (search.warehouseName.trim()) q.set('warehouseName', search.warehouseName.trim());
     setError('');
@@ -425,28 +401,6 @@ function MaterialWarehouse() {
             placeholder="검색"
           />
         </label>
-        {!isMobile && (
-          <>
-            <label className={styles.searchLabel}>
-              기간(시작)
-              <input
-                type="date"
-                value={search.startDate}
-                onChange={(e) => setSearch((s) => ({ ...s, startDate: e.target.value }))}
-                className={styles.input}
-              />
-            </label>
-            <label className={styles.searchLabel}>
-              기간(종료)
-              <input
-                type="date"
-                value={search.endDate}
-                onChange={(e) => setSearch((s) => ({ ...s, endDate: e.target.value }))}
-                className={styles.input}
-              />
-            </label>
-          </>
-        )}
         <button type="submit" className={styles.btnPrimary}>
           검색
         </button>
@@ -680,7 +634,7 @@ function MaterialWarehouse() {
                   />
                 </label>
                 <label className={styles.label}>
-                  주소 <span className={styles.required}>*</span>
+                  주소 <span className={styles.optional}>(선택)</span>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
                     <input
                       type="text"
@@ -688,7 +642,6 @@ function MaterialWarehouse() {
                       onChange={(e) => setFormData((f) => ({ ...f, address: e.target.value }))}
                       className={styles.input}
                       placeholder="Daum 주소 검색으로 입력"
-                      required
                       style={{ flex: 1 }}
                     />
                     <button type="button" className={styles.btnSecondary} onClick={handleAddressSearch}>

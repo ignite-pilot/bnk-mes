@@ -25,6 +25,8 @@ describe('MaterialInfo', () => {
     expect(screen.getByRole('heading', { name: /원자재 정보/ })).toBeInTheDocument();
     expect(screen.getAllByPlaceholderText(/검색/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole('button', { name: /검색/ })).toBeInTheDocument();
+    expect(screen.queryByText(/등록일자\(시작\)/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/등록일자\(종료\)/)).not.toBeInTheDocument();
   });
 
   it('등록·엑셀 다운로드 버튼을 보여준다', () => {

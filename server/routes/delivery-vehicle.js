@@ -1,6 +1,6 @@
 /**
  * ig-config-manager 코드 프록시 API
- * - CAR_MAKER, VEHICLE_CODE, PART_CODE, COLOR_CODE 코드를 조회하여 제공
+ * - CAR_MAKER, VEHICLE_CODE, PART_CODE, COLOR_CODE, RAW_MATERIAL_TYPE 코드를 조회하여 제공
  */
 import { Router } from 'express';
 import fetch from 'node-fetch';
@@ -51,10 +51,10 @@ router.get('/', async (req, res) => {
 });
 
 /**
- * 특정 코드 조회 (VEHICLE_CODE, PART_CODE, COLOR_CODE 등)
+ * 특정 코드 조회 (VEHICLE_CODE, PART_CODE, COLOR_CODE, RAW_MATERIAL_TYPE 등)
  * GET /api/delivery-vehicles/codes/:codeValue
  */
-const ALLOWED_CODES = ['VEHICLE_CODE', 'PART_CODE', 'COLOR_CODE'];
+const ALLOWED_CODES = ['VEHICLE_CODE', 'PART_CODE', 'COLOR_CODE', 'SEMI_PRODUCT', 'RAW_MATERIAL_TYPE'];
 
 router.get('/codes/:codeValue', async (req, res) => {
   const { codeValue } = req.params;

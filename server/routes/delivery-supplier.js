@@ -375,17 +375,17 @@ router.delete('/:id', async (req, res) => {
     const id = parseInt(req.params.id, 10);
     if (Number.isNaN(id)) return res.status(400).json({ error: '잘못된 ID입니다.' });
 
-    // 참조 검사
+    // 참조 검사 (목록과 동일: 삭제 플래그 Y인 행은 화면에 없으므로 납품사 삭제를 막지 않음)
     const [refAffiliate] = await getPool().query(
-      `SELECT COUNT(*) AS cnt FROM delivery_affiliates WHERE supplier_id = ?`,
+      `SELECT COUNT(*) AS cnt FROM delivery_affiliates WHERE supplier_id = ? AND deleted = 'N'`,
       [id]
     );
     const [refWarehouse] = await getPool().query(
-      `SELECT COUNT(*) AS cnt FROM delivery_warehouses WHERE supplier_id = ?`,
+      `SELECT COUNT(*) AS cnt FROM delivery_warehouses WHERE supplier_id = ? AND deleted = 'N'`,
       [id]
     );
     const [refRequest] = await getPool().query(
-      `SELECT COUNT(*) AS cnt FROM delivery_requests WHERE supplier_id = ?`,
+      `SELECT COUNT(*) AS cnt FROM delivery_requests WHERE supplier_id = ? AND deleted = 'N'`,
       [id]
     );
     if ((refAffiliate[0]?.cnt || 0) > 0 || (refWarehouse[0]?.cnt || 0) > 0 || (refRequest[0]?.cnt || 0) > 0) {

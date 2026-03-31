@@ -6,7 +6,7 @@
 import { Router } from 'express';
 import { getPool } from '../lib/db.js';
 import logger from '../lib/logger.js';
-import { toStartOfDayString, toEndOfDayString } from '../lib/dateUtils.js';
+import { optionalSqlDateRange } from '../lib/dateUtils.js';
 import { sendInboundEmail } from '../lib/notification.js';
 
 const router = Router();
@@ -16,23 +16,10 @@ const SUPPLIERS_TABLE = 'raw_material_suppliers';
 const RAW_MATERIALS_TABLE = 'raw_materials';
 const TYPES_TABLE = 'material_types';
 
-function defaultDateRange() {
-  const end = new Date();
-  const start = new Date();
-  start.setDate(start.getDate() - 7);
-  return { start, end };
-}
-
 function toDateString(d) {
   if (!d) return null;
   const dt = d instanceof Date ? d : new Date(d);
   return Number.isNaN(dt.getTime()) ? null : dt.toISOString().slice(0, 10);
-}
-/** 목록/엑셀 기간: 시작 00:00:00, 종료 23:59:59 */
-function dateRangeStrings(startDate, endDate, defaultStart, defaultEnd) {
-  const from = startDate ? new Date(startDate) : defaultStart;
-  const to = endDate ? new Date(endDate) : defaultEnd;
-  return { fromStr: toStartOfDayString(from), toStr: toEndOfDayString(to) };
 }
 
 const STATUS_LABEL = { request: '요청', received: '입고완료', returned: '반품', active: '활성', cancelled: '취소' };
@@ -76,8 +63,7 @@ export async function exportExcel(req, res) {
   try {
     const { view = 'requests', rawMaterialIds = '', inboundStatus = '', startDate, endDate, supplierId } = req.query;
     const requestIdRaw = req.query.requestId ?? req.query.requestid ?? '';
-    const { start, end } = defaultDateRange();
-    const { fromStr, toStr } = dateRangeStrings(startDate, endDate, start, end);
+    const range = optionalSqlDateRange(startDate, endDate);
     const supplierIdNum = supplierId != null && supplierId !== '' ? parseInt(supplierId, 10) : null;
     const materialIds = rawMaterialIds
       ? rawMaterialIds.split(',').map((x) => parseInt(x.trim(), 10)).filter((x) => !Number.isNaN(x) && x > 0)
@@ -94,9 +80,9 @@ export async function exportExcel(req, res) {
       if (hasRequestId) {
         whereParts.push('r.id = ?');
         params.push(requestIdNum);
-      } else {
+      } else if (range) {
         whereParts.push('r.request_date >= ?', 'r.request_date <= ?');
-        params.push(fromStr, toStr);
+        params.push(range.from, range.to);
       }
       if (inboundStatus && ['request', 'received', 'returned'].includes(inboundStatus)) {
         whereParts.push('l.status = ?');
@@ -151,9 +137,9 @@ export async function exportExcel(req, res) {
     if (hasRequestId) {
       wherePartsReq.push('r.id = ?');
       paramsReq.push(requestIdNum);
-    } else {
+    } else if (range) {
       wherePartsReq.push('r.request_date >= ?', 'r.request_date <= ?');
-      paramsReq.push(fromStr, toStr);
+      paramsReq.push(range.from, range.to);
     }
     if (inboundStatus === 'cancelled') wherePartsReq.push("r.status = 'cancelled'");
     else if (inboundStatus === 'active') wherePartsReq.push("r.status = 'active'");
@@ -226,8 +212,7 @@ export async function listHandler(req, res) {
   try {
     const { view = 'requests', rawMaterialIds = '', inboundStatus = '', startDate, endDate, supplierId, page = 1, limit = 20 } = req.query;
     const requestIdRaw = req.query.requestId ?? req.query.requestid ?? '';
-    const { start, end } = defaultDateRange();
-    const { fromStr, toStr } = dateRangeStrings(startDate, endDate, start, end);
+    const range = optionalSqlDateRange(startDate, endDate);
     const offset = (Math.max(1, parseInt(page, 10)) - 1) * Math.min(100, Math.max(1, parseInt(limit, 10)));
     const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10)));
     const materialIds = rawMaterialIds
@@ -244,9 +229,9 @@ export async function listHandler(req, res) {
       if (hasRequestId) {
         whereParts.push('r.id = ?');
         params.push(requestIdNum);
-      } else {
+      } else if (range) {
         whereParts.push('r.request_date >= ?', 'r.request_date <= ?');
-        params.push(fromStr, toStr);
+        params.push(range.from, range.to);
       }
       if (inboundStatus && ['request', 'received', 'returned'].includes(inboundStatus)) {
         whereParts.push('l.status = ?');
@@ -287,9 +272,9 @@ export async function listHandler(req, res) {
     if (hasRequestId) {
       whereParts.push('r.id = ?');
       params.push(requestIdNum);
-    } else {
+    } else if (range) {
       whereParts.push('r.request_date >= ?', 'r.request_date <= ?');
-      params.push(fromStr, toStr);
+      params.push(range.from, range.to);
     }
     if (inboundStatus === 'cancelled') {
       whereParts.push("r.status = 'cancelled'");

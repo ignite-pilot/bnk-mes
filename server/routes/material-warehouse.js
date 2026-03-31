@@ -1,24 +1,16 @@
 /**
  * 원자재 업체 창고 정보 API (원자재.md, 기본규칙.md)
- * - 목록(검색: 공급 업체, 창고 이름, 기간 default 1주), 단건 조회, 등록, 수정, 삭제(플래그), 엑셀 다운로드
+ * - 목록(검색: 공급 업체, 창고 이름), 단건 조회, 등록, 수정, 삭제(플래그), 엑셀 다운로드
  * - 삭제는 플래그만, 목록은 deleted=N만, 등록/수정/삭제 시 수정일자·수정자 갱신
  */
 import { Router } from 'express';
 import { getPool } from '../lib/db.js';
 import logger from '../lib/logger.js';
-import { toStartOfDayString, toEndOfDayString } from '../lib/dateUtils.js';
 
 const router = Router();
 const TABLE = 'supplier_warehouses';
 const JUNCTION_TABLE = 'warehouse_raw_materials';
 const SUPPLIERS_TABLE = 'raw_material_suppliers';
-
-function defaultDateRange() {
-  const end = new Date();
-  const start = new Date();
-  start.setDate(start.getDate() - 7);
-  return { start, end };
-}
 
 const LIST_SELECT = `SELECT w.id, w.supplier_id, s.name AS supplier_name, w.name, w.address, w.postal_code, w.address_detail, w.updated_at, w.updated_by
   FROM \`${TABLE}\` w
@@ -26,17 +18,13 @@ const LIST_SELECT = `SELECT w.id, w.supplier_id, s.name AS supplier_name, w.name
 
 /**
  * 엑셀 다운로드 (CSV)
- * GET /api/material-warehouses/export-excel?supplierId=&warehouseName=&startDate=&endDate=
+ * GET /api/material-warehouses/export-excel?supplierId=&warehouseName=
  */
 router.get('/export-excel', async (req, res) => {
   try {
-    const { supplierId = '', warehouseName = '', startDate, endDate } = req.query;
-    const { start, end } = defaultDateRange();
-    const from = toStartOfDayString(startDate ? new Date(startDate) : start);
-    const to = toEndOfDayString(endDate ? new Date(endDate) : end);
-
-    let where = 'WHERE w.deleted = ? AND w.updated_at >= ? AND w.updated_at <= ?';
-    const params = ['N', from, to];
+    const { supplierId = '', warehouseName = '' } = req.query;
+    let where = 'WHERE w.deleted = ?';
+    const params = ['N'];
     const sid = parseInt(supplierId, 10);
     if (!Number.isNaN(sid) && sid > 0) {
       where += ' AND w.supplier_id = ?';
@@ -95,20 +83,17 @@ router.get('/export-excel', async (req, res) => {
 });
 
 /**
- * 목록 조회 (삭제 플래그 N만, 검색: 공급 업체, 창고 이름, 기간 default 1주)
- * GET /api/material-warehouses?supplierId=&warehouseName=&startDate=&endDate=&page=1&limit=20
+ * 목록 조회 (삭제 플래그 N만, 검색: 공급 업체, 창고 이름)
+ * GET /api/material-warehouses?supplierId=&warehouseName=&page=1&limit=20
  */
 router.get('/', async (req, res) => {
   try {
-    const { supplierId = '', warehouseName = '', startDate, endDate, page = 1, limit = 20 } = req.query;
-    const { start, end } = defaultDateRange();
-    const from = toStartOfDayString(startDate ? new Date(startDate) : start);
-    const to = toEndOfDayString(endDate ? new Date(endDate) : end);
+    const { supplierId = '', warehouseName = '', page = 1, limit = 20 } = req.query;
     const offset = (Math.max(1, parseInt(page, 10)) - 1) * Math.min(100, Math.max(1, parseInt(limit, 10)));
     const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10)));
 
-    let where = 'WHERE w.deleted = ? AND w.updated_at >= ? AND w.updated_at <= ?';
-    const params = ['N', from, to];
+    let where = 'WHERE w.deleted = ?';
+    const params = ['N'];
     const sid = parseInt(supplierId, 10);
     if (!Number.isNaN(sid) && sid > 0) {
       where += ' AND w.supplier_id = ?';
@@ -173,8 +158,8 @@ router.get('/:id', async (req, res) => {
 /**
  * 등록
  * POST /api/material-warehouses
- * 필수: supplier_id(공급 업체), name(창고 이름), address(주소), updatedBy(수정자)
- * 선택: postal_code, address_detail, raw_material_ids[]
+ * 필수: supplier_id(공급 업체), name(창고 이름), updatedBy(수정자)
+ * 선택: address, postal_code, address_detail, raw_material_ids[]
  */
 router.post('/', async (req, res) => {
   try {
@@ -195,9 +180,6 @@ router.post('/', async (req, res) => {
     if (!name || String(name).trim() === '') {
       return res.status(400).json({ error: '창고 이름은 필수입니다.' });
     }
-    if (!address || String(address).trim() === '') {
-      return res.status(400).json({ error: '주소는 필수입니다.' });
-    }
     if (updatedBy == null || String(updatedBy).trim() === '') {
       return res.status(400).json({ error: '수정자는 필수입니다.' });
     }
@@ -211,13 +193,14 @@ router.post('/', async (req, res) => {
     }
 
     const updatedByTrimmed = String(updatedBy).trim();
+    const normalizedAddress = address != null ? String(address).trim() : '';
     const [result] = await getPool().query(
       `INSERT INTO \`${TABLE}\` (supplier_id, name, address, postal_code, address_detail, updated_at, updated_by)
        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)`,
       [
         supplierId,
         String(name).trim(),
-        String(address).trim(),
+        normalizedAddress,
         postal_code != null ? String(postal_code).trim() : null,
         address_detail != null ? String(address_detail).trim() : null,
         updatedByTrimmed,

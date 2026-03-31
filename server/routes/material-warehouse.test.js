@@ -58,6 +58,13 @@ describe('원자재 업체 창고 정보 API', () => {
       await request(app).get(`/api/material-warehouses?${q.toString()}`);
       expect(mockQuery).toHaveBeenCalled();
     });
+
+    it('목록 조회 WHERE에 수정일자(updated_at) 범위 조건을 넣지 않는다', async () => {
+      mockQuery.mockResolvedValueOnce([[]]).mockResolvedValueOnce([[{ total: 0 }]]);
+      await request(app).get('/api/material-warehouses');
+      const listSql = mockQuery.mock.calls[0][0];
+      expect(String(listSql)).not.toMatch(/w\.updated_at\s*>=/);
+    });
   });
 
   describe('GET /api/material-warehouses/export-excel', () => {
@@ -81,6 +88,13 @@ describe('원자재 업체 창고 정보 API', () => {
       expect(res.headers['content-disposition']).toMatch(/supplier_warehouses\.csv/);
       expect(res.text).toContain('원자재 공급 업체');
       expect(res.text).toContain('창고 이름');
+    });
+
+    it('엑셀 조회 WHERE에 수정일자(updated_at) 범위 조건을 넣지 않는다', async () => {
+      mockQuery.mockResolvedValueOnce([[]]);
+      await request(app).get('/api/material-warehouses/export-excel');
+      const sql = mockQuery.mock.calls[0][0];
+      expect(String(sql)).not.toMatch(/w\.updated_at\s*>=/);
     });
   });
 
@@ -114,10 +128,10 @@ describe('원자재 업체 창고 정보 API', () => {
   });
 
   describe('POST /api/material-warehouses', () => {
-    it('supplier_id/name/address 없으면 400', async () => {
+    it('supplier_id/name 없으면 400', async () => {
       const res = await request(app).post('/api/material-warehouses').send({});
       expect(res.status).toBe(400);
-      expect(res.body.error).toMatch(/필수|공급 업체|창고 이름|주소|수정자/);
+      expect(res.body.error).toMatch(/필수|공급 업체|창고 이름|수정자/);
     });
 
     it('수정자(updatedBy) 없으면 400', async () => {
@@ -155,6 +169,33 @@ describe('원자재 업체 창고 정보 API', () => {
       expect(res.status).toBe(201);
       expect(res.body).toHaveProperty('name', '1호 창고');
       expect(res.body).toHaveProperty('raw_material_ids');
+    });
+
+    it('주소 없이도 등록된다', async () => {
+      mockQuery
+        .mockResolvedValueOnce([[{ id: 1 }]])
+        .mockResolvedValueOnce([{ insertId: 2 }])
+        .mockResolvedValueOnce([
+          [
+            {
+              id: 2,
+              supplier_id: 1,
+              supplier_name: 'A업체',
+              name: '2호 창고',
+              address: '',
+            },
+          ],
+        ])
+        .mockResolvedValueOnce([[]]);
+      const res = await request(app)
+        .post('/api/material-warehouses')
+        .send({
+          supplier_id: 1,
+          name: '2호 창고',
+          updatedBy: 'user',
+        });
+      expect(res.status).toBe(201);
+      expect(res.body).toHaveProperty('address', '');
     });
   });
 
