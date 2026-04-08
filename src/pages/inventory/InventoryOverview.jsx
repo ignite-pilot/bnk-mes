@@ -19,6 +19,7 @@ function InventoryOverview() {
   const { user } = useAuth();
   const [data, setData] = useState([]);
   const [total, setTotal] = useState(0);
+  const [bulk, setBulk] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -39,6 +40,7 @@ function InventoryOverview() {
       const d = await res.json().catch(() => ({}));
       if (!res.ok) { setError(d.error || '조회 실패'); return; }
       let rows = d.list || [];
+      setBulk(d.bulk || {});
       if (search.vehicleCode) rows = rows.filter(r => r.vehicle_code === search.vehicleCode);
       if (search.partCode) rows = rows.filter(r => r.part_code === search.partCode);
       if (search.colorCode.trim()) rows = rows.filter(r => r.color_code.includes(search.colorCode.trim()));
@@ -114,21 +116,19 @@ function InventoryOverview() {
     { key: 'memo', label: '비고' },
   ];
 
-  // 경주 공장 컬럼
+  // 경주 공장 컬럼 (접착제/프라이머는 상단 카드로 표시)
   const gjColumns = [
     { key: 'qty_gj_sangji', label: '상지' },
-    { key: 'qty_gj_surface', label: '표면처리제/접착제' },
     { key: 'qty_gj_foam', label: '폼' },
-    { key: 'qty_gj_primer', label: '프라이머' },
     { key: 'qty_gj_pyoji', label: '표지' },
     { key: 'qty_gj_foam_primer', label: '폼 프라이머' },
   ];
 
   // 울산 공장 컬럼
   const usColumns = [
+    { key: 'qty_us_pyoji', label: '표지' },
     { key: 'qty_us_haji', label: '하지' },
     { key: 'qty_us_foam_raw', label: '미처리 폼' },
-    { key: 'qty_us_pyoji', label: '표지' },
     { key: 'qty_us_foam_primer', label: '폼 프라이머' },
     { key: 'qty_us_finished', label: '완제품' },
   ];
@@ -183,6 +183,21 @@ function InventoryOverview() {
       </div>
 
       {error && <div className={styles.error} style={{ flexShrink: 0 }}>{error}</div>}
+
+      <div className="bulk-section" style={{ flexShrink: 0 }}>
+        <div className="bulk-divider"><span>경주 원자재 총량</span></div>
+        <div className="bulk-summary">
+          <div className="bulk-summary-card">
+            <span className="bulk-summary-label">표면처리제/접착제</span>
+            <span className="bulk-summary-qty">{Number(bulk.gj_surface?.qty || 0).toLocaleString()}<span className="bulk-summary-unit">M</span></span>
+          </div>
+          <div className="bulk-summary-card">
+            <span className="bulk-summary-label">프라이머</span>
+            <span className="bulk-summary-qty">{Number(bulk.gj_primer?.qty || 0).toLocaleString()}<span className="bulk-summary-unit">M</span></span>
+          </div>
+        </div>
+        <div className="bulk-divider"></div>
+      </div>
 
       <div style={{ fontSize: '0.8125rem', color: '#64748b', marginBottom: '0.25rem', flexShrink: 0 }}>총 {total}건</div>
 

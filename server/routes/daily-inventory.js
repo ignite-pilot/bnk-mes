@@ -270,13 +270,25 @@ router.get('/overview', async (req, res) => {
       if (f) map[key][f] = r.quantity;
     }
 
-    const list = Object.values(map).sort((a, b) =>
-      a.vehicle_code.localeCompare(b.vehicle_code) ||
-      a.part_code.localeCompare(b.part_code) ||
-      a.color_code.localeCompare(b.color_code)
-    );
+    // _BULK 항목은 별도 분리
+    const allItems = Object.values(map);
+    const bulkItem = allItems.find(r => r.vehicle_code === '_BULK');
+    const bulk = {};
+    if (bulkItem) {
+      for (const [pt, field] of Object.entries(OVERVIEW_FIELDS)) {
+        if (bulkItem[field]) bulk[pt] = { qty: bulkItem[field], label: PROCESS_TYPES[pt]?.label || pt };
+      }
+    }
 
-    res.json({ list, total: list.length });
+    const list = allItems
+      .filter(r => r.vehicle_code !== '_BULK')
+      .sort((a, b) =>
+        a.vehicle_code.localeCompare(b.vehicle_code) ||
+        a.part_code.localeCompare(b.part_code) ||
+        a.color_code.localeCompare(b.color_code)
+      );
+
+    res.json({ list, total: list.length, bulk });
   } catch (err) {
     logger.error('daily-inventory overview error', { error: err.message });
     res.status(500).json({ error: '재고 현황 조회에 실패했습니다.' });

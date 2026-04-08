@@ -5,6 +5,7 @@
   overflow: auto;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
+  padding-bottom: 2px;
 }
 
 /* 테이블 기본 */
@@ -112,4 +113,69 @@
 /* 행 호버 */
 .inv-table tbody tr:hover td {
   background: #e0e7ff !important;
+}
+
+/* 총량 섹션 */
+.bulk-section {
+  margin-bottom: 0.5rem;
+}
+
+.bulk-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin: 0.375rem 0;
+}
+
+.bulk-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e2e8f0;
+}
+
+.bulk-divider span + .bulk-divider::before {
+  display: none;
+}
+
+.bulk-divider:empty::before {
+  display: none;
+}
+
+/* 총량 요약 카드 */
+.bulk-summary {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.bulk-summary-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.bulk-summary-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.bulk-summary-qty {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.bulk-summary-unit {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #94a3b8;
+  margin-left: 2px;
 }

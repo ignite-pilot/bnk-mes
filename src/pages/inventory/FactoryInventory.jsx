@@ -16,9 +16,9 @@ const API = '/api/daily-inventory';
 const FACTORY_TABS = {
   gj: [
     { key: 'gj_sangji', label: '상지', category: '원자재' },
-    { key: 'gj_surface', label: '표면처리제/접착제', category: '원자재' },
+    { key: 'gj_surface', label: '표면처리제/접착제', category: '원자재', bulk: true },
     { key: 'gj_foam', label: '폼', category: '원자재' },
-    { key: 'gj_primer', label: '프라이머', category: '원자재' },
+    { key: 'gj_primer', label: '프라이머', category: '원자재', bulk: true },
     { key: 'gj_pyoji', label: '표지', category: '반제품' },
     { key: 'gj_foam_primer', label: '폼 프라이머', category: '반제품' },
   ],
@@ -80,7 +80,7 @@ function FactoryInventory({ factory, title }) {
     const measure = () => {
       if (gridContainerRef.current) {
         const rect = gridContainerRef.current.getBoundingClientRect();
-        setGridHeight(Math.max(400, window.innerHeight - rect.top - 20));
+        setGridHeight(Math.max(400, window.innerHeight - rect.top - 80));
       }
     };
     measure();
@@ -255,6 +255,67 @@ function FactoryInventory({ factory, title }) {
 
   const activeTabInfo = tabs.find((t) => t.key === activeTab);
   const tabLabel = activeTabInfo?.label || '';
+  const isBulk = activeTabInfo?.bulk || false;
+
+  // 총량 관리: 단일 행 데이터
+  const [bulkQty, setBulkQty] = useState({});
+  const bulkSaveTimer = useRef(null);
+
+  const fetchBulk = useCallback(async () => {
+    if (!activeTab || !isBulk) return;
+    setLoading(true);
+    setError('');
+    try {
+      const q = new URLSearchParams({
+        processType: activeTab,
+        startDate: dateRange.start,
+        endDate: dateRange.end,
+      });
+      const res = await fetch(`${API}?${q}`);
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) { setError(d.error || '조회 실패'); return; }
+      setDates(d.dates || []);
+      // bulk는 제품이 1개(또는 0개) — 모든 날짜 데이터를 하나로 합침
+      const qty = {};
+      for (const [, dateMap] of Object.entries(d.dataMap || {})) {
+        for (const [dt, val] of Object.entries(dateMap)) {
+          qty[dt] = (qty[dt] || 0) + val;
+        }
+      }
+      setBulkQty(qty);
+      setGridData(d.products || []);
+    } catch {
+      setError('조회 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  }, [activeTab, isBulk, dateRange.start, dateRange.end]);
+
+  useEffect(() => { if (isBulk) fetchBulk(); }, [fetchBulk, isBulk]);
+
+  const handleBulkChange = (dt, value) => {
+    const qty = Number(value) || 0;
+    setBulkQty(prev => ({ ...prev, [dt]: qty }));
+
+    if (bulkSaveTimer.current) clearTimeout(bulkSaveTimer.current);
+    bulkSaveTimer.current = setTimeout(async () => {
+      try {
+        await fetch(`${API}/upsert`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            processType: activeTab,
+            vehicleCode: '_BULK',
+            partCode: '_BULK',
+            colorCode: '_BULK',
+            stockDate: dt,
+            quantity: qty,
+            updatedBy: userName,
+          }),
+        });
+      } catch { /* silent */ }
+    }, 800);
+  };
 
   // 카테고리별 탭 그룹
   const categories = [...new Set(tabs.map(t => t.category))];
@@ -293,36 +354,75 @@ function FactoryInventory({ factory, title }) {
           <input type="date" value={dateRange.end} onChange={(e) => setDateRange((r) => ({ ...r, end: e.target.value }))} className={styles.input} />
         </label>
         <button type="submit" className={styles.btnPrimary}>조회</button>
-        <button type="button" className={styles.btnSecondary} onClick={() => setAddOpen(true)}>
-          제품 추가
-        </button>
+        {!isBulk && (
+          <button type="button" className={styles.btnSecondary} onClick={() => setAddOpen(true)}>
+            제품 추가
+          </button>
+        )}
       </form>
 
       {error && <div className={styles.error} style={{ flexShrink: 0 }}>{error}</div>}
 
-      <div style={{ fontSize: '0.8125rem', color: '#64748b', marginBottom: '0.25rem', flexShrink: 0 }}>
-        {tabLabel} — 총 {gridData.length}개 제품
-      </div>
-
       {loading ? (
         <p className={styles.loading}>조회 중...</p>
-      ) : (
-        <div ref={gridContainerRef} style={{ flex: 1, minHeight: 0 }}>
-          <DynamicDataSheetGrid
-            value={gridData}
-            onChange={handleChange}
-            columns={columns}
-            rowHeight={32}
-            headerRowHeight={36}
-            height={gridHeight}
-            addRowsComponent={false}
-            disableContextMenu
-            lockRows
-          />
+      ) : isBulk ? (
+        /* 총량 관리 모드 */
+        <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+          <div className="bulk-header">
+            <div className="bulk-title-area">
+              <h2 className="bulk-title">{tabLabel}</h2>
+              <span className="bulk-badge">총량 관리</span>
+            </div>
+            <p className="bulk-desc">제품 구분 없이 전체 수량을 일별로 관리합니다.</p>
+          </div>
+          <div className="bulk-grid">
+            {dates.map(dt => {
+              const day = new Date(dt);
+              const weekday = ['일', '월', '화', '수', '목', '금', '토'][day.getDay()];
+              const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+              const isToday = dt === new Date().toISOString().slice(0, 10);
+              return (
+                <div key={dt} className={`bulk-card${isToday ? ' today' : ''}${isWeekend ? ' weekend' : ''}`}>
+                  <div className="bulk-card-date">
+                    <span className="bulk-card-md">{dt.slice(5).replace('-', '/')}</span>
+                    <span className={`bulk-card-day${isWeekend ? ' weekend' : ''}`}>{weekday}</span>
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    className="bulk-card-input"
+                    value={bulkQty[dt] || ''}
+                    onChange={(e) => handleBulkChange(dt, e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+              );
+            })}
+          </div>
         </div>
+      ) : (
+        /* 제품별 관리 모드 */
+        <>
+          <div style={{ fontSize: '0.8125rem', color: '#64748b', marginBottom: '0.25rem', flexShrink: 0 }}>
+            {tabLabel} — 총 {gridData.length}개 제품
+          </div>
+          <div ref={gridContainerRef} style={{ flex: 1, minHeight: 0 }}>
+            <DynamicDataSheetGrid
+              value={gridData}
+              onChange={handleChange}
+              columns={columns}
+              rowHeight={32}
+              headerRowHeight={36}
+              height={gridHeight}
+              addRowsComponent={false}
+              disableContextMenu
+              lockRows
+            />
+          </div>
+        </>
       )}
 
-      {addOpen && (
+      {addOpen && !isBulk && (
         <div className={styles.modalOverlay} onClick={(e) => { if (e.target === e.currentTarget) setAddOpen(false); }} role="presentation">
           <div className={styles.modal} onClick={(e) => e.stopPropagation()} role="dialog" style={{ maxWidth: 460 }}>
             <h2 className={styles.modalTitle}>{tabLabel} — 제품 추가</h2>
