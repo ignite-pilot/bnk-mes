@@ -1,10 +1,20 @@
 export const menuConfig = [
   {
+    id: 'master',
+    label: '마스터 정보',
+    path: '/master',
+    children: [
+      { id: 'master-material', label: '원자재 정보', path: '/master/material' },
+      { id: 'master-finished-product', label: '완제품 정보', path: '/master/finished-product' },
+      { id: 'master-semi-product', label: '반제품 정보', path: '/master/semi-product' },
+    ],
+  },
+  {
     id: 'material',
     label: '원자재 관리',
     path: '/material',
     children: [
-      { id: 'material-info', label: '원자재 정보', path: '/material/info' },
+      // { id: 'material-info', label: '원자재 정보', path: '/material/info' },
       { id: 'material-supplier', label: '원자재 공급 업체', path: '/material/supplier' },
       { id: 'material-warehouse', label: '원자재 업체 창고 정보', path: '/material/warehouse' },
       { id: 'material-inbound', label: '원자재 입고 요청/입고 관리', path: '/material/inbound' },
@@ -20,10 +30,10 @@ export const menuConfig = [
     children: [
       { id: 'delivery-supplier', label: '납품사 정보', path: '/delivery/supplier' },
       { id: 'delivery-partner', label: '납품사 연계 업체 정보', path: '/delivery/partner' },
-      { id: 'delivery-warehouse', label: '납품사 창고 정보', path: '/delivery/warehouse' },
-      { id: 'delivery-product', label: '완제품 정보', path: '/delivery/product' },
-      { id: 'delivery-semi', label: '반제품 정보', path: '/delivery/semi' },
-      { id: 'delivery-inbound', label: '완제품 입고요청/납품 관리', path: '/delivery/inbound' },
+      // { id: 'delivery-warehouse', label: '납품사 창고 정보', path: '/delivery/warehouse' },
+      // { id: 'delivery-product', label: '완제품 정보', path: '/delivery/product' },
+      // { id: 'delivery-semi', label: '반제품 정보', path: '/delivery/semi' },
+      // { id: 'delivery-inbound', label: '완제품 입고요청/납품 관리', path: '/delivery/inbound' },
     ],
   },
   {
@@ -35,9 +45,9 @@ export const menuConfig = [
       { id: 'production-plan-3m', label: '3개월 주문 계획 관리', path: '/production/plan-3m' },
       { id: 'production-plan-1w', label: '1주 주문 관리', path: '/production/plan-1w' },
       { id: 'production-daily', label: '일별 생산 계획/실적 관리', path: '/production/daily' },
-      { id: 'production-process', label: '공정별 생산 계획/실적 관리', path: '/production/process' },
-      { id: 'production-material', label: '원자재 사용 관리', path: '/production/material' },
-      { id: 'production-quality', label: '품질 관리', path: '/production/quality' },
+      // { id: 'production-process', label: '공정별 생산 계획/실적 관리', path: '/production/process' },
+      // { id: 'production-material', label: '원자재 사용 관리', path: '/production/material' },
+      // { id: 'production-quality', label: '품질 관리', path: '/production/quality' },
     ],
   },
   {
@@ -45,11 +55,12 @@ export const menuConfig = [
     label: '재고 관리',
     path: '/inventory',
     children: [
-      { id: 'inventory-warehouse', label: '비엔케이 재고 창고 정보', path: '/inventory/warehouse' },
+      { id: 'inventory-overview', label: '재고 현황', path: '/inventory/overview' },
+      { id: 'inventory-gj', label: '경주 공장 재고', path: '/inventory/gj' },
+      { id: 'inventory-us', label: '울산 공장 재고', path: '/inventory/us' },
+      // { id: 'inventory-warehouse', label: '비엔케이 재고 창고 정보', path: '/inventory/warehouse' },
       { id: 'material-stock', label: '원자재 재고 관리', path: '/material/stock' },
       { id: 'delivery-stock', label: '납품사 재고 관리', path: '/delivery/stock' },
-      { id: 'inventory-product', label: '완제품 재고 관리', path: '/inventory/product' },
-      { id: 'inventory-semi', label: '반제품 재고 관리', path: '/inventory/semi' },
     ],
   },
 ];

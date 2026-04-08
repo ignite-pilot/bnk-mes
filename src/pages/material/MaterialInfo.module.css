@@ -269,16 +269,16 @@
 /* 페이지 네비게이션 */
 .pagination {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   align-items: center;
-  gap: 0.25rem 0.5rem;
+  gap: 0.5rem;
   margin-top: 1rem;
   font-size: 0.8125rem;
   color: #475569;
 }
 
 .paginationTotal {
-  margin-right: 0.75rem;
+  align-self: flex-start;
   color: #64748b;
 }
 
@@ -299,7 +299,7 @@
   cursor: pointer;
 }
 
-.pageBtn:hover:not(:disabled) {
+.pageBtn:hover:not(:disabled):not(.pageBtnCurrent) {
   background: #f1f5f9;
   border-color: #cbd5e1;
 }
@@ -309,16 +309,19 @@
   cursor: not-allowed;
 }
 
-.pageBtnCurrent {
+.pageEllipsis {
+  padding: 0 0.25rem;
+  color: #94a3b8;
+  user-select: none;
+}
+
+.pageBtnCurrent,
+.pageBtnCurrent:hover {
   background: #2563eb;
   border-color: #2563eb;
   color: #fff;
-}
-
-.pageBtnCurrent:hover {
-  background: #1d4ed8;
-  border-color: #1d4ed8;
-  color: #fff;
+  font-weight: 700;
+  cursor: default;
 }
 
 /* Modal */
@@ -463,6 +466,52 @@
 .viewForm .dl dt:last-of-type,
 .viewForm .dl dd:last-child {
   border-bottom: none;
+}
+
+/* 마스터 테이블: 고정 레이아웃 + ellipsis */
+.masterTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+  table-layout: fixed;
+}
+
+.masterTable th,
+.masterTable td {
+  padding: 0.5rem 0.6rem;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.masterTable th {
+  background: #f8fafc;
+  font-weight: 600;
+  color: #475569;
+}
+
+.masterTable tbody tr:nth-child(even) {
+  background: #f8fafc;
+}
+
+.masterTable tbody tr:hover {
+  background: #eef2ff;
+}
+
+/* ellipsis 셀 (linkBtn 포함) */
+.ellipsisCell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ellipsisCell .linkBtn {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 반응형: 태블릿 */

@@ -2,15 +2,19 @@
  * 원자재 정보 API (원자재.md 규칙)
  * - 원자재 종류(material_types) 연동, 목록(검색), 단건 조회, 등록, 수정, 삭제(플래그), 엑셀 다운로드
  */
-import { Router } from 'express';
+import express, { Router } from 'express';
 import { getPool } from '../lib/db.js';
 import logger from '../lib/logger.js';
+import { getAllCodeMaps } from '../lib/config-codes.js';
+import { parseCsv } from '../lib/csv-parse.js';
 
 const router = Router();
 const TABLE = 'raw_materials';
 const TYPES_TABLE = 'material_types';
 
-const LIST_SELECT = `SELECT rm.id, rm.kind_id, mt.name AS kind, rm.name, rm.color, rm.thickness, rm.width, rm.\`length\`,
+const LIST_SELECT = `SELECT rm.id, rm.kind_id, mt.name AS kind, rm.code, rm.name, rm.color,
+  rm.vehicle_code, rm.vehicle_name, rm.part_code, rm.part_name, rm.color_code,
+  rm.thickness, rm.width, rm.\`length\`,
   rm.supplier_safety_stock, rm.bnk_warehouse_safety_stock,
   rm.created_at, rm.updated_at, rm.created_by, rm.updated_by
   FROM \`${TABLE}\` rm
@@ -26,9 +30,102 @@ router.get('/types', async (req, res) => {
   }
 });
 
+router.get('/template', (req, res) => {
+  const BOM = '\uFEFF';
+  const header = '원자재 종류(상지/표지/하지/폼/프라이머),자재코드,원자재 이름,차종코드,차종명,적용부코드,적용부명,색상코드,색상,두께(mm),폭(mm),길이(mm),원자재 업체 안전재고 수량,비엔케이 창고 안전재고 수량\n';
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="raw_materials_template.csv"');
+  res.send(BOM + header);
+});
+
+router.post('/upload', express.text({ type: '*/*', limit: '5mb' }), async (req, res) => {
+  try {
+    const createdBy = req.query.createdBy || 'upload';
+    const { headers, rows } = parseCsv(req.body);
+    if (rows.length === 0) return res.status(400).json({ error: '업로드할 데이터가 없습니다.' });
+
+    const { vehicleMap, partMap, colorMap } = await getAllCodeMaps();
+
+    // 원자재 종류 맵 (name → id)
+    const [typeRows] = await getPool().query(`SELECT id, name FROM \`${TYPES_TABLE}\``);
+    const typeMap = {};
+    for (const t of typeRows) typeMap[t.name] = t.id;
+
+    const errors = [];
+    const valid = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const rowNum = i + 2; // 헤더가 1행이므로
+      const [kindName, code, name, vehicleCode, vehicleName, partCode, partName, colorCode, color, thickness, width, length, sss, bss] = r;
+
+      const rowErrors = [];
+      if (!name) rowErrors.push('원자재 이름 누락');
+
+      let kindId = null;
+      if (kindName) {
+        kindId = typeMap[kindName.trim()];
+        if (!kindId) rowErrors.push(`원자재 종류 "${kindName}" 없음`);
+      } else {
+        rowErrors.push('원자재 종류 누락');
+      }
+
+      let validVehicleCode = vehicleCode?.trim() || null;
+      let validVehicleName = vehicleName?.trim() || null;
+      if (validVehicleCode && !vehicleMap[validVehicleCode]) {
+        rowErrors.push(`차종코드 "${validVehicleCode}" 없음`);
+      } else if (validVehicleCode) {
+        validVehicleName = vehicleMap[validVehicleCode];
+      }
+
+      let validPartCode = partCode?.trim() || null;
+      let validPartName = partName?.trim() || null;
+      if (validPartCode && !partMap[validPartCode]) {
+        rowErrors.push(`적용부코드 "${validPartCode}" 없음`);
+      } else if (validPartCode) {
+        validPartName = partMap[validPartCode];
+      }
+
+      let validColorCode = colorCode?.trim() || null;
+      let validColor = color?.trim() || null;
+      if (validColorCode && !colorMap[validColorCode]) {
+        rowErrors.push(`색상코드 "${validColorCode}" 없음`);
+      } else if (validColorCode) {
+        validColor = colorMap[validColorCode];
+      }
+
+      if (rowErrors.length > 0) {
+        errors.push({ row: rowNum, name: name || '(빈값)', errors: rowErrors });
+      } else {
+        valid.push([
+          kindId, code?.trim() || null, name.trim(), color?.trim() || validColor,
+          validVehicleCode, validVehicleName, validPartCode, validPartName, validColorCode,
+          thickness ? Number(thickness) : null, width ? Number(width) : null, length ? Number(length) : null,
+          sss ? Number(sss) : null, bss ? Number(bss) : null,
+          createdBy, createdBy,
+        ]);
+      }
+    }
+
+    let inserted = 0;
+    if (valid.length > 0) {
+      const [result] = await getPool().query(
+        `INSERT INTO \`${TABLE}\` (kind_id, code, name, color, vehicle_code, vehicle_name, part_code, part_name, color_code, thickness, width, \`length\`, supplier_safety_stock, bnk_warehouse_safety_stock, created_by, updated_by) VALUES ?`,
+        [valid]
+      );
+      inserted = result.affectedRows;
+    }
+
+    res.json({ inserted, errors, totalRows: rows.length });
+  } catch (err) {
+    logger.error('material upload error', { error: err.message, stack: err.stack });
+    res.status(500).json({ error: `업로드에 실패했습니다: ${err.message}` });
+  }
+});
+
 router.get('/export-excel', async (req, res) => {
   try {
-    const { kindId = '', name = '' } = req.query;
+    const { kindId = '', name = '', vehicleCode = '' } = req.query;
     let where = 'WHERE rm.deleted = ?';
     const params = ['N'];
     const kindIdNum = parseInt(kindId, 10);
@@ -40,6 +137,10 @@ router.get('/export-excel', async (req, res) => {
       where += ' AND rm.name LIKE ?';
       params.push(`%${String(name).trim()}%`);
     }
+    if (vehicleCode && String(vehicleCode).trim()) {
+      where += ' AND rm.vehicle_code = ?';
+      params.push(String(vehicleCode).trim());
+    }
 
     const [rows] = await getPool().query(
       `${LIST_SELECT} ${where} ORDER BY rm.id DESC`,
@@ -47,7 +148,7 @@ router.get('/export-excel', async (req, res) => {
     );
 
     const BOM = '\uFEFF';
-    const header = '원자재 종류,원자재 이름,색상,두께 (mm),폭 (mm),길이 (mm),원자재 업체 안전재고 수량,비엔케이 창고 안전재고 수량,등록일자,수정일자,등록자,수정자\n';
+    const header = '원자재 종류,자재코드,원자재 이름,색상,색상코드,차종코드,차종명,적용부코드,적용부명,두께 (mm),폭 (mm),길이 (mm),원자재 업체 안전재고 수량,비엔케이 창고 안전재고 수량,등록일자,수정일자,등록자,수정자\n';
     const toCsvCell = (v) => {
       if (v == null) return '';
       const s = String(v);
@@ -58,8 +159,14 @@ router.get('/export-excel', async (req, res) => {
         (r) =>
           [
             toCsvCell(r.kind),
+            toCsvCell(r.code),
             toCsvCell(r.name),
             toCsvCell(r.color),
+            toCsvCell(r.color_code),
+            toCsvCell(r.vehicle_code),
+            toCsvCell(r.vehicle_name),
+            toCsvCell(r.part_code),
+            toCsvCell(r.part_name),
             toCsvCell(r.thickness),
             toCsvCell(r.width),
             toCsvCell(r.length),
@@ -85,9 +192,10 @@ router.get('/export-excel', async (req, res) => {
 
 router.get('/', async (req, res) => {
   try {
-    const { kindId = '', name = '', page = 1, limit = 20 } = req.query;
-    const offset = (Math.max(1, parseInt(page, 10)) - 1) * Math.min(100, Math.max(1, parseInt(limit, 10)));
-    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10)));
+    const { kindId = '', name = '', vehicleCode = '', page = 1, limit = 20 } = req.query;
+    const maxLimit = parseInt(limit, 10) > 100 ? 2000 : 100;
+    const offset = (Math.max(1, parseInt(page, 10)) - 1) * Math.min(maxLimit, Math.max(1, parseInt(limit, 10)));
+    const limitNum = Math.min(maxLimit, Math.max(1, parseInt(limit, 10)));
 
     let where = 'WHERE rm.deleted = ?';
     const params = ['N'];
@@ -99,6 +207,10 @@ router.get('/', async (req, res) => {
     if (name && String(name).trim()) {
       where += ' AND rm.name LIKE ?';
       params.push(`%${String(name).trim()}%`);
+    }
+    if (vehicleCode && String(vehicleCode).trim()) {
+      where += ' AND rm.vehicle_code = ?';
+      params.push(String(vehicleCode).trim());
     }
 
     const [rows] = await getPool().query(
@@ -139,8 +251,14 @@ router.post('/', async (req, res) => {
   try {
     const {
       kind_id,
+      code = null,
       name,
       color = null,
+      vehicle_code = null,
+      vehicle_name = null,
+      part_code = null,
+      part_name = null,
+      color_code = null,
       thickness = null,
       width = null,
       length = null,
@@ -167,12 +285,18 @@ router.post('/', async (req, res) => {
     if (dup.length) return res.status(409).json({ error: '이미 사용 중인 원자재 이름입니다.' });
 
     const [result] = await getPool().query(
-      `INSERT INTO \`${TABLE}\` (kind_id, name, color, thickness, width, \`length\`, supplier_safety_stock, bnk_warehouse_safety_stock, created_by, updated_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO \`${TABLE}\` (kind_id, code, name, color, vehicle_code, vehicle_name, part_code, part_name, color_code, thickness, width, \`length\`, supplier_safety_stock, bnk_warehouse_safety_stock, created_by, updated_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         parseInt(kind_id, 10),
+        code != null ? String(code).trim() : null,
         nameTrimmed,
         color != null ? String(color).trim() : null,
+        vehicle_code != null ? String(vehicle_code).trim() : null,
+        vehicle_name != null ? String(vehicle_name).trim() : null,
+        part_code != null ? String(part_code).trim() : null,
+        part_name != null ? String(part_name).trim() : null,
+        color_code != null ? String(color_code).trim() : null,
         thickness != null ? Number(thickness) : null,
         width != null ? Number(width) : null,
         length != null ? Number(length) : null,
@@ -194,7 +318,7 @@ router.patch('/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (Number.isNaN(id)) return res.status(400).json({ error: '잘못된 ID입니다.' });
-    const { name, supplier_safety_stock, bnk_warehouse_safety_stock, updatedBy } = req.body || {};
+    const { name, code, vehicle_code, vehicle_name, part_code, part_name, color_code, color, kind_id, thickness, width, length, supplier_safety_stock, bnk_warehouse_safety_stock, updatedBy } = req.body || {};
 
     const [existing] = await getPool().query(
       `SELECT id FROM \`${TABLE}\` WHERE id = ? AND deleted = ?`,
@@ -214,6 +338,17 @@ router.patch('/:id', async (req, res) => {
       updates.push('name = ?');
       params.push(String(name).trim());
     }
+    if (code !== undefined) { updates.push('code = ?'); params.push(code != null ? String(code).trim() : null); }
+    if (kind_id !== undefined) { updates.push('kind_id = ?'); params.push(parseInt(kind_id, 10)); }
+    if (color !== undefined) { updates.push('color = ?'); params.push(color != null ? String(color).trim() : null); }
+    if (vehicle_code !== undefined) { updates.push('vehicle_code = ?'); params.push(vehicle_code != null ? String(vehicle_code).trim() : null); }
+    if (vehicle_name !== undefined) { updates.push('vehicle_name = ?'); params.push(vehicle_name != null ? String(vehicle_name).trim() : null); }
+    if (part_code !== undefined) { updates.push('part_code = ?'); params.push(part_code != null ? String(part_code).trim() : null); }
+    if (part_name !== undefined) { updates.push('part_name = ?'); params.push(part_name != null ? String(part_name).trim() : null); }
+    if (color_code !== undefined) { updates.push('color_code = ?'); params.push(color_code != null ? String(color_code).trim() : null); }
+    if (thickness !== undefined) { updates.push('thickness = ?'); params.push(thickness != null ? Number(thickness) : null); }
+    if (width !== undefined) { updates.push('width = ?'); params.push(width != null ? Number(width) : null); }
+    if (length !== undefined) { updates.push('`length` = ?'); params.push(length != null ? Number(length) : null); }
     if (supplier_safety_stock !== undefined) {
       updates.push('supplier_safety_stock = ?');
       params.push(supplier_safety_stock != null ? Number(supplier_safety_stock) : null);

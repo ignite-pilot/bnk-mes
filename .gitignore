@@ -6,3 +6,5 @@ dist/
 coverage/
 .vite/
 .idea/
+/BNK_DOC/
+.confluence.md

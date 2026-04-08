@@ -82,6 +82,7 @@ const ddStyles = {
     display: 'flex',
     alignItems: 'center',
     gap: '0.4rem',
+    whiteSpace: 'nowrap',
   },
   itemSelected: {
     background: '#eff6ff',
@@ -126,6 +127,7 @@ function SelectDropdown({
   maxSelect = 1,
   style,
   triggerStyle,
+  dropdownMinWidth,
 }) {
   const isMulti = maxSelect > 1;
   const [open, setOpen] = useState(false);
@@ -141,7 +143,8 @@ function SelectDropdown({
   const updatePanelPosition = useCallback(() => {
     if (!ref.current) return;
     const r = ref.current.getBoundingClientRect();
-    setPanelBox({ top: r.bottom + 2, left: r.left, width: r.width });
+    const minW = dropdownMinWidth ? Math.max(r.width, dropdownMinWidth) : r.width;
+    setPanelBox({ top: r.bottom + 2, left: r.left, minWidth: minW });
   }, []);
 
   // 다중 선택 시 value를 배열로 정규화
@@ -286,7 +289,8 @@ function SelectDropdown({
               ...ddStyles.panel,
               top: panelBox.top,
               left: panelBox.left,
-              width: panelBox.width,
+              minWidth: panelBox.minWidth,
+              width: 'auto',
             }}
             onMouseDown={(e) => e.preventDefault()}
             onClick={(e) => e.stopPropagation()}

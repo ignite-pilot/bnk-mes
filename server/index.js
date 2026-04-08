@@ -11,6 +11,8 @@ import materialRouter from './routes/material.js';
 import materialSupplierRouter, { listHandler as materialSupplierList } from './routes/material-supplier.js';
 import materialWarehouseRouter from './routes/material-warehouse.js';
 import materialStockRouter from './routes/material-stock.js';
+import inventoryOverviewRouter from './routes/inventory-overview.js';
+import dailyInventoryRouter from './routes/daily-inventory.js';
 import materialInboundRouter, { exportExcel as materialInboundExportExcel, listHandler as materialInboundList } from './routes/material-inbound.js';
 import deliveryVehicleRouter from './routes/delivery-vehicle.js';
 import deliveryFinishedProductRouter, { listHandler as deliveryFinishedProductList } from './routes/delivery-finished-product.js';
@@ -19,6 +21,8 @@ import deliverySupplierRouter, { listHandler as deliverySupplierList } from './r
 import deliveryAffiliateRouter, { listHandler as deliveryAffiliateList } from './routes/delivery-affiliate.js';
 import deliveryWarehouseRouter, { listHandler as deliveryWarehouseList } from './routes/delivery-warehouse.js';
 import deliveryRequestRouter, { listHandler as deliveryRequestList, exportExcel as deliveryRequestExportExcel } from './routes/delivery-request.js';
+import masterFinishedProductRouter, { listHandler as masterFinishedProductList, exportExcel as masterFinishedProductExportExcel, templateDownload as masterFinishedProductTemplate } from './routes/master-finished-product.js';
+import masterSemiProductRouter, { listHandler as masterSemiProductList, exportExcel as masterSemiProductExportExcel, templateDownload as masterSemiProductTemplate } from './routes/master-semi-product.js';
 import chatRouter from './routes/chat.js';
 import logger from './lib/logger.js';
 
@@ -39,9 +43,19 @@ app.get('/api/material-suppliers', materialSupplierList);
 app.use('/api/material-suppliers', materialSupplierRouter);
 app.use('/api/material-warehouses', materialWarehouseRouter);
 app.use('/api/material-stock', materialStockRouter);
+app.use('/api/inventory-overview', inventoryOverviewRouter);
+app.use('/api/daily-inventory', dailyInventoryRouter);
 app.get('/api/material-inbound/export-excel', materialInboundExportExcel);
 app.get('/api/material-inbound', materialInboundList);
 app.use('/api/material-inbound', materialInboundRouter);
+app.get('/api/master-finished-products/template', masterFinishedProductTemplate);
+app.get('/api/master-finished-products/export-excel', masterFinishedProductExportExcel);
+app.get('/api/master-finished-products', masterFinishedProductList);
+app.use('/api/master-finished-products', masterFinishedProductRouter);
+app.get('/api/master-semi-products/template', masterSemiProductTemplate);
+app.get('/api/master-semi-products/export-excel', masterSemiProductExportExcel);
+app.get('/api/master-semi-products', masterSemiProductList);
+app.use('/api/master-semi-products', masterSemiProductRouter);
 app.use('/api/chat', chatRouter);
 
 app.use('/api/delivery-vehicles', deliveryVehicleRouter);

@@ -1,0 +1,115 @@
+/* 테이블 래퍼 */
+.inv-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+}
+
+/* 테이블 기본 */
+.inv-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.8125rem;
+  table-layout: auto;
+}
+
+.inv-table th,
+.inv-table td {
+  padding: 6px 8px;
+  border: 1px solid #e2e8f0;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.inv-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  box-shadow: 0 1px 0 #e2e8f0;
+}
+
+.inv-table thead th {
+  border-bottom: 2px solid #cbd5e1;
+}
+
+/* 헤더 — 제품 정보 */
+.th-info {
+  background: #f1f5f9;
+  color: #334155;
+  font-weight: 600;
+}
+
+/* 헤더 — 규격 */
+.th-spec {
+  background: #f0fdf4;
+  color: #166534;
+  font-weight: 600;
+}
+
+/* 헤더 — 경주 공장 */
+.th-gj {
+  background: #dbeafe;
+  color: #1e40af;
+  font-weight: 600;
+}
+
+/* 헤더 — 울산 공장 */
+.th-us {
+  background: #fef3c7;
+  color: #92400e;
+  font-weight: 600;
+}
+
+/* 바디 셀 */
+.td-info {
+  background: #f8fafc;
+  font-weight: 500;
+  color: #334155;
+}
+
+.td-vehicle,
+.td-part,
+.td-color {
+  vertical-align: middle;
+  font-weight: 600;
+  max-width: 80px;
+  white-space: normal !important;
+  word-break: break-word;
+}
+
+.td-color {
+  max-width: 50px;
+  font-weight: 500;
+}
+
+.td-memo {
+  min-width: 120px;
+  text-align: left;
+}
+
+.td-spec {
+  background: #f7fef9;
+  color: #166534;
+  max-width: 50px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+}
+
+.td-gj {
+  background: #eff6ff;
+  text-align: right;
+}
+
+.td-us {
+  background: #fffbeb;
+  text-align: right;
+}
+
+/* 행 호버 */
+.inv-table tbody tr:hover td {
+  background: #e0e7ff !important;
+}

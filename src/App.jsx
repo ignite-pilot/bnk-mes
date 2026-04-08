@@ -11,6 +11,9 @@ import MaterialInfo from './pages/material/MaterialInfo';
 import MaterialSupplier from './pages/material/MaterialSupplier';
 import MaterialWarehouse from './pages/material/MaterialWarehouse';
 import MaterialStock from './pages/material/MaterialStock';
+import InventoryOverview from './pages/inventory/InventoryOverview';
+import GjInventory from './pages/inventory/GjInventory';
+import UsInventory from './pages/inventory/UsInventory';
 import MaterialInbound from './pages/material/MaterialInbound';
 import DeliveryFinishedProduct from './pages/delivery/DeliveryFinishedProduct';
 import DeliverySemiProduct from './pages/delivery/DeliverySemiProduct';
@@ -18,6 +21,9 @@ import DeliverySupplier from './pages/delivery/DeliverySupplier';
 import DeliveryAffiliate from './pages/delivery/DeliveryAffiliate';
 import DeliveryWarehouse from './pages/delivery/DeliveryWarehouse';
 import DeliveryRequest from './pages/delivery/DeliveryRequest';
+import MasterMaterialInfo from './pages/master/MasterMaterialInfo';
+import MasterFinishedProduct from './pages/master/MasterFinishedProduct';
+import MasterSemiProduct from './pages/master/MasterSemiProduct';
 import ChatPanel from './components/ChatPanel';
 import { menuConfig } from './config/menu';
 
@@ -31,13 +37,19 @@ function App() {
       p.path !== '/material/warehouse' &&
       p.path !== '/material/stock' &&
       p.path !== '/material/inbound' &&
+      p.path !== '/inventory/overview' &&
+      p.path !== '/inventory/gj' &&
+      p.path !== '/inventory/us' &&
       p.path !== '/delivery/vehicle' &&
       p.path !== '/delivery/product' &&
       p.path !== '/delivery/semi' &&
       p.path !== '/delivery/supplier' &&
       p.path !== '/delivery/partner' &&
       p.path !== '/delivery/warehouse' &&
-      p.path !== '/delivery/inbound'
+      p.path !== '/delivery/inbound' &&
+      p.path !== '/master/material' &&
+      p.path !== '/master/finished-product' &&
+      p.path !== '/master/semi-product'
   );
 
   return (
@@ -51,6 +63,9 @@ function App() {
           <Route path="material/supplier" element={<MaterialSupplier />} />
           <Route path="material/warehouse" element={<MaterialWarehouse />} />
           <Route path="material/stock" element={<MaterialStock />} />
+          <Route path="inventory/overview" element={<InventoryOverview />} />
+          <Route path="inventory/gj" element={<GjInventory />} />
+          <Route path="inventory/us" element={<UsInventory />} />
           <Route path="material/inbound" element={<MaterialInbound />} />
           <Route path="delivery/product" element={<DeliveryFinishedProduct />} />
           <Route path="delivery/semi" element={<DeliverySemiProduct />} />
@@ -58,6 +73,9 @@ function App() {
           <Route path="delivery/partner" element={<DeliveryAffiliate />} />
           <Route path="delivery/warehouse" element={<DeliveryWarehouse />} />
           <Route path="delivery/inbound" element={<DeliveryRequest />} />
+          <Route path="master/material" element={<MasterMaterialInfo />} />
+          <Route path="master/finished-product" element={<MasterFinishedProduct />} />
+          <Route path="master/semi-product" element={<MasterSemiProduct />} />
           {allPaths.map(({ path, title }) => (
             <Route
               key={path}

@@ -3,10 +3,12 @@
  * - 목록(flatten), 엑셀, 등록(업체/BNK), 단건조회, 수정, 삭제(플래그), 페이지네이션
  * - 위험도: 부족(red), 확보필요(orange), 안전(green), 일부과잉(lightbrown), 과잉위험(darkbrown)
  */
-import { Router } from 'express';
+import express, { Router } from 'express';
 import { getPool } from '../lib/db.js';
 import logger from '../lib/logger.js';
 import { optionalSqlDateRange } from '../lib/dateUtils.js';
+import { getAllCodeMaps } from '../lib/config-codes.js';
+import XLSX from 'xlsx';
 
 const router = Router();
 const SNAPSHOTS_TABLE = 'stock_snapshots';
@@ -36,6 +38,209 @@ function applyRiskToList(rows) {
     return { ...r, risk_level: risk.level, risk_label: risk.label, risk_color: risk.color };
   });
 }
+
+// ── 코드 정규화 맵 (Excel 표기 → config manager 값) ──
+const VEHICLE_NORM = {
+  'ME1a': 'ME1A', 'CN7 PE': 'CN7PE', 'RG3 PE': 'RG3PE', 'NX4 PE': 'NX4PE',
+  'RG3 PE EV': 'RG3PE EV', 'JK1 PE': 'JK1 PE',
+};
+const PART_NORM = {
+  'Main': 'MAIN', 'Main FRT': 'MAIN FRT', 'Main RR': 'MAIN RR',
+  'Main/FRT': 'MAIN FRT', 'Main/RR': 'MAIN RR',
+  'A/Rest': 'A/REST', 'A/Rest FRT': 'A/REST FRT', 'A/Rest RR': 'A/REST RR',
+  'A/Rest UPR FRT': 'A/REST UPR FRT',
+  'A/REST UPR RR': 'A/Rest UPR RR', // config manager에 A/Rest UPR RR 로 등록됨
+  'A/REST/FRT': 'A/REST FRT', 'A/REST/RR': 'A/REST RR',
+  'CTR/FRT': 'CTR FRT', 'CTR/RR': 'CTR RR',
+  'UPR/FRT': 'UPR FRT', 'UPR/RR': 'UPR RR',
+  'UPR F': 'UPR FRT', 'UPR R': 'UPR RR',
+  'UPR  FRT': 'UPR FRT', 'UPR  RR': 'UPR RR', 'UPR  4CVT': 'UPR 4CVT',
+  'H/INR': 'H/INNER',
+};
+function normCode(v, map) { if (!v) return ''; const s = String(v).trim(); return map[s] || s; }
+
+/**
+ * 현진엠아이 Excel 파서
+ * 시트: 재고수량
+ * 헤더(행2): 제품코드 | 차종 | 적용부 | 칼라코드 | 색상 | 상,하지 | 두께 | 폭 | 상지재고수량 | 하지재고수량
+ */
+function parseHyunjin(wb) {
+  const sheet = wb.Sheets['재고수량'] || wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 }).slice(3); // 데이터는 행3부터
+  const items = [];
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r[1]) continue; // 차종 없으면 skip
+    const vehicle = normCode(r[1], VEHICLE_NORM);
+    const part = normCode(r[2], PART_NORM);
+    const color = String(r[4] || '').trim(); // 색상
+    const kind = String(r[5] || '').trim(); // 상,하지
+    const sangjiQty = Number(r[8]) || 0;
+    const hajiQty = Number(r[9]) || 0;
+
+    const thickness = Number(r[6]) || null;
+    const width = Number(r[7]) || null;
+
+    if (kind.includes('상지') && sangjiQty > 0) {
+      items.push({ rowNum: i + 4, vehicle, part, color, kind: '상지', thickness, width, quantity: sangjiQty });
+    }
+    if (kind.includes('하지') && hajiQty > 0) {
+      items.push({ rowNum: i + 4, vehicle, part, color, kind: '하지', thickness, width, quantity: hajiQty });
+    }
+    if (!kind.includes('상지') && !kind.includes('하지')) {
+      if (sangjiQty > 0) items.push({ rowNum: i + 4, vehicle, part, color, kind: '상지', thickness, width, quantity: sangjiQty });
+      if (hajiQty > 0) items.push({ rowNum: i + 4, vehicle, part, color, kind: '하지', thickness, width, quantity: hajiQty });
+    }
+  }
+  return items;
+}
+
+/**
+ * 협성 Excel 파서
+ * 시트: 재고현황(상지), 재고현황(하지)
+ * 헤더(행3): NO | 품목 | 자재코드 | 생산일자 | 차종 | 부위 | 색상 | 두께 | 폭 | 재고량(m) | LOT
+ */
+function parseHyupsung(wb) {
+  const items = [];
+  for (const [sheetName, kind] of [['재고현황(상지)', '상지'], ['재고현황(하지)', '하지']]) {
+    const sheet = wb.Sheets[sheetName];
+    if (!sheet) continue;
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 }).slice(4); // 데이터는 행4부터
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const vehicle = normCode(r[4], VEHICLE_NORM);
+      const part = normCode(r[5], PART_NORM);
+      const color = String(r[6] || '').trim();
+      const thickness = Number(r[7]) || null;
+      const width = Number(r[8]) || null;
+      const quantity = Number(r[9]) || 0;
+      if (!vehicle || !color || quantity <= 0) continue;
+      items.push({ rowNum: i + 5, vehicle, part, color, kind, thickness, width, quantity });
+    }
+  }
+  return items;
+}
+
+/**
+ * 엑셀 업로드 — 업체별 원자재 재고 일괄 등록 (xlsx)
+ * POST /api/material-stock/upload-excel
+ * query: supplierId, stockDate, updatedBy
+ * body: binary xlsx
+ */
+router.post('/upload-excel', express.raw({ type: '*/*', limit: '10mb' }), async (req, res) => {
+  try {
+    const { supplierId, stockDate, updatedBy } = req.query;
+    if (!supplierId) return res.status(400).json({ error: '업체를 선택해 주세요.' });
+    if (!stockDate) return res.status(400).json({ error: '재고 기준일을 입력해 주세요.' });
+    if (!updatedBy) return res.status(400).json({ error: '등록자 정보가 필요합니다.' });
+
+    const sid = parseInt(supplierId, 10);
+    const pool = getPool();
+
+    // 업체 이름 조회
+    const [supplierRows] = await pool.query(
+      `SELECT name FROM \`${SUPPLIERS_TABLE}\` WHERE id = ? AND deleted = 'N'`, [sid]
+    );
+    if (!supplierRows.length) return res.status(400).json({ error: '업체를 찾을 수 없습니다.' });
+    const supplierName = supplierRows[0].name;
+
+    // xlsx 파싱
+    const wb = XLSX.read(req.body, { type: 'buffer' });
+
+    // 업체에 따라 파서 선택
+    let parsedItems;
+    if (supplierName.includes('현진')) {
+      parsedItems = parseHyunjin(wb);
+    } else if (supplierName.includes('협성')) {
+      parsedItems = parseHyupsung(wb);
+    } else {
+      return res.status(400).json({ error: `"${supplierName}" 업체의 엑셀 파서가 아직 등록되지 않았습니다. 현진, 협성만 지원됩니다.` });
+    }
+
+    if (parsedItems.length === 0) return res.status(400).json({ error: '재고가 있는 데이터가 없습니다.' });
+
+    // config manager 코드 맵 가져오기
+    const { vehicleMap, partMap, colorMap } = await getAllCodeMaps();
+
+    // 원자재 DB 맵: vehicle_code|part_code|color_code|kind|thickness|width → id
+    const [rmRows] = await pool.query(
+      `SELECT rm.id, rm.vehicle_code, rm.part_code, rm.color_code, rm.kind_id, rm.thickness, rm.width, mt.name AS kind
+       FROM \`${RAW_MATERIALS_TABLE}\` rm
+       LEFT JOIN \`${TYPES_TABLE}\` mt ON mt.id = rm.kind_id
+       WHERE rm.deleted = 'N'`
+    );
+    // 두께+폭까지 포함한 정밀 매칭 맵
+    const rmMapFull = {};
+    // 두께+폭 없이 차종+적용부+색상+종류만으로 매칭 (fallback)
+    const rmMapBase = {};
+    for (const rm of rmRows) {
+      const baseKey = `${rm.vehicle_code || ''}|${rm.part_code || ''}|${rm.color_code || ''}|${rm.kind || ''}`;
+      const fullKey = `${baseKey}|${rm.thickness}|${rm.width}`;
+      rmMapFull[fullKey] = rm.id;
+      rmMapBase[baseKey] = rm.id;
+    }
+
+    const errors = [];
+    const lines = [];
+
+    for (const item of parsedItems) {
+      const rowErrors = [];
+
+      // config manager 코드 검증
+      if (item.vehicle && !vehicleMap[item.vehicle]) {
+        rowErrors.push(`차종 "${item.vehicle}" config manager에 없음`);
+      }
+      if (item.part && !partMap[item.part]) {
+        rowErrors.push(`적용부 "${item.part}" config manager에 없음`);
+      }
+      if (item.color && !colorMap[item.color]) {
+        rowErrors.push(`색상 "${item.color}" config manager에 없음`);
+      }
+
+      // 원자재 매칭 (두께+폭 정밀 매칭 → fallback 기본 매칭)
+      const baseKey = `${item.vehicle}|${item.part}|${item.color}|${item.kind}`;
+      const fullKey = `${baseKey}|${item.thickness}|${item.width}`;
+      const rmId = rmMapFull[fullKey] || rmMapBase[baseKey];
+      if (!rmId) {
+        rowErrors.push(`원자재 매칭 안됨 (${item.vehicle} ${item.part} ${item.color} ${item.kind})`);
+      }
+
+      if (rowErrors.length > 0) {
+        errors.push({ row: item.rowNum, name: `${item.vehicle} ${item.part} ${item.color} ${item.kind}`, errors: rowErrors });
+      } else {
+        lines.push({ raw_material_id: rmId, quantity: item.quantity });
+      }
+    }
+
+    // 같은 원자재 중복 시 수량 합산
+    const mergedMap = new Map();
+    for (const l of lines) {
+      mergedMap.set(l.raw_material_id, (mergedMap.get(l.raw_material_id) || 0) + l.quantity);
+    }
+    const mergedLines = [...mergedMap.entries()].map(([raw_material_id, quantity]) => ({ raw_material_id, quantity }));
+
+    let inserted = 0;
+    if (mergedLines.length > 0) {
+      const [result] = await pool.query(
+        `INSERT INTO \`${SNAPSHOTS_TABLE}\` (snapshot_type, supplier_id, stock_date, updated_by)
+         VALUES ('supplier', ?, ?, ?)`,
+        [sid, String(stockDate).trim().slice(0, 10), String(updatedBy).trim()]
+      );
+      const snapshotId = result.insertId;
+      const lineRows = mergedLines.map(l => [snapshotId, l.raw_material_id, l.quantity]);
+      await pool.query(
+        `INSERT INTO \`${LINES_TABLE}\` (snapshot_id, raw_material_id, quantity) VALUES ?`,
+        [lineRows]
+      );
+      inserted = lines.length;
+    }
+
+    res.json({ inserted, errors, totalRows: parsedItems.length });
+  } catch (err) {
+    logger.error('material-stock upload error', { error: err.message, stack: err.stack });
+    res.status(500).json({ error: `업로드에 실패했습니다: ${err.message}` });
+  }
+});
 
 router.get('/bnk-warehouses', async (req, res) => {
   try {
@@ -74,29 +279,22 @@ router.get('/export-excel', async (req, res) => {
     }
     const sid = parseInt(supplierId, 10);
     if (!Number.isNaN(sid) && sid > 0) {
-      where += ' AND sup.id = ?';
+      where += ' AND ss.supplier_id = ?';
       params.push(sid);
-    }
-    if (warehouseName && String(warehouseName).trim()) {
-      const like = `%${String(warehouseName).trim()}%`;
-      where += ' AND (sw.name LIKE ? OR bw.name LIKE ?)';
-      params.push(like, like);
     }
 
     const sql = `
-      SELECT ss.id AS snapshot_id, ss.snapshot_type, ss.stock_date, ss.supplier_warehouse_id, ss.bnk_warehouse_id,
+      SELECT ss.id AS snapshot_id, ss.snapshot_type, ss.stock_date, ss.supplier_id,
         sl.raw_material_id, sl.quantity,
         rm.name AS raw_material_name, mt.name AS raw_material_kind,
+        rm.vehicle_code, rm.vehicle_name, rm.part_code, rm.part_name, rm.color_code, rm.color,
         rm.supplier_safety_stock, rm.bnk_warehouse_safety_stock,
-        sw.name AS supplier_warehouse_name, sup.name AS supplier_name,
-        bw.name AS bnk_warehouse_name
+        sup.name AS supplier_name
       FROM \`${SNAPSHOTS_TABLE}\` ss
       INNER JOIN \`${LINES_TABLE}\` sl ON sl.snapshot_id = ss.id
       INNER JOIN \`${RAW_MATERIALS_TABLE}\` rm ON rm.id = sl.raw_material_id
       LEFT JOIN \`${TYPES_TABLE}\` mt ON mt.id = rm.kind_id
-      LEFT JOIN \`${SUPPLIER_WAREHOUSES_TABLE}\` sw ON sw.id = ss.supplier_warehouse_id AND sw.deleted = 'N'
-      LEFT JOIN \`${SUPPLIERS_TABLE}\` sup ON sup.id = sw.supplier_id AND sup.deleted = 'N'
-      LEFT JOIN \`${BNK_WAREHOUSES_TABLE}\` bw ON bw.id = ss.bnk_warehouse_id AND bw.deleted = 'N'
+      LEFT JOIN \`${SUPPLIERS_TABLE}\` sup ON sup.id = ss.supplier_id AND sup.deleted = 'N'
       ${where}
       ORDER BY ss.stock_date DESC, ss.id DESC, sl.raw_material_id
     `;
@@ -163,29 +361,22 @@ router.get('/', async (req, res) => {
     }
     const sid = parseInt(supplierId, 10);
     if (!Number.isNaN(sid) && sid > 0) {
-      where += ' AND sup.id = ?';
+      where += ' AND ss.supplier_id = ?';
       params.push(sid);
-    }
-    if (warehouseName && String(warehouseName).trim()) {
-      const like = `%${String(warehouseName).trim()}%`;
-      where += ' AND (sw.name LIKE ? OR bw.name LIKE ?)';
-      params.push(like, like);
     }
 
     const listSql = `
-      SELECT ss.id AS snapshot_id, ss.snapshot_type, ss.stock_date, ss.supplier_warehouse_id, ss.bnk_warehouse_id,
-        sl.raw_material_id, sl.quantity,
+      SELECT ss.id AS snapshot_id, ss.snapshot_type, ss.stock_date, ss.supplier_id,
+        sl.id AS line_id, sl.raw_material_id, sl.quantity,
         rm.name AS raw_material_name, mt.name AS raw_material_kind,
+        rm.vehicle_code, rm.vehicle_name, rm.part_code, rm.part_name, rm.color_code, rm.color,
         rm.supplier_safety_stock, rm.bnk_warehouse_safety_stock,
-        sw.name AS supplier_warehouse_name, sup.name AS supplier_name,
-        bw.name AS bnk_warehouse_name
+        sup.name AS supplier_name
       FROM \`${SNAPSHOTS_TABLE}\` ss
       INNER JOIN \`${LINES_TABLE}\` sl ON sl.snapshot_id = ss.id
       INNER JOIN \`${RAW_MATERIALS_TABLE}\` rm ON rm.id = sl.raw_material_id
       LEFT JOIN \`${TYPES_TABLE}\` mt ON mt.id = rm.kind_id
-      LEFT JOIN \`${SUPPLIER_WAREHOUSES_TABLE}\` sw ON sw.id = ss.supplier_warehouse_id AND sw.deleted = 'N'
-      LEFT JOIN \`${SUPPLIERS_TABLE}\` sup ON sup.id = sw.supplier_id AND sup.deleted = 'N'
-      LEFT JOIN \`${BNK_WAREHOUSES_TABLE}\` bw ON bw.id = ss.bnk_warehouse_id AND bw.deleted = 'N'
+      LEFT JOIN \`${SUPPLIERS_TABLE}\` sup ON sup.id = ss.supplier_id AND sup.deleted = 'N'
       ${where}
       ORDER BY ss.stock_date DESC, ss.id DESC, sl.raw_material_id
       LIMIT ? OFFSET ?
@@ -194,9 +385,7 @@ router.get('/', async (req, res) => {
       SELECT COUNT(*) AS total
       FROM \`${SNAPSHOTS_TABLE}\` ss
       INNER JOIN \`${LINES_TABLE}\` sl ON sl.snapshot_id = ss.id
-      LEFT JOIN \`${SUPPLIER_WAREHOUSES_TABLE}\` sw ON sw.id = ss.supplier_warehouse_id AND sw.deleted = 'N'
-      LEFT JOIN \`${SUPPLIERS_TABLE}\` sup ON sup.id = sw.supplier_id AND sup.deleted = 'N'
-      LEFT JOIN \`${BNK_WAREHOUSES_TABLE}\` bw ON bw.id = ss.bnk_warehouse_id AND bw.deleted = 'N'
+      LEFT JOIN \`${SUPPLIERS_TABLE}\` sup ON sup.id = ss.supplier_id AND sup.deleted = 'N'
       ${where}
     `;
     const [rows] = await getPool().query(listSql, [...params, limitNum, offset]);
@@ -219,12 +408,9 @@ router.get('/:id', async (req, res) => {
     const id = parseInt(req.params.id, 10);
     if (Number.isNaN(id)) return res.status(400).json({ error: '잘못된 ID입니다.' });
     const [snap] = await getPool().query(
-      `SELECT ss.*, sw.name AS supplier_warehouse_name, sup.name AS supplier_name, sup.id AS supplier_id,
-        bw.name AS bnk_warehouse_name
+      `SELECT ss.*, sup.name AS supplier_name
        FROM \`${SNAPSHOTS_TABLE}\` ss
-       LEFT JOIN \`${SUPPLIER_WAREHOUSES_TABLE}\` sw ON sw.id = ss.supplier_warehouse_id AND sw.deleted = 'N'
-       LEFT JOIN \`${SUPPLIERS_TABLE}\` sup ON sup.id = sw.supplier_id AND sup.deleted = 'N'
-       LEFT JOIN \`${BNK_WAREHOUSES_TABLE}\` bw ON bw.id = ss.bnk_warehouse_id AND bw.deleted = 'N'
+       LEFT JOIN \`${SUPPLIERS_TABLE}\` sup ON sup.id = ss.supplier_id AND sup.deleted = 'N'
        WHERE ss.id = ? AND ss.deleted = 'N'`,
       [id]
     );
@@ -247,7 +433,7 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { snapshotType, supplierWarehouseId, bnkWarehouseId, stockDate, lines = [], updatedBy } = req.body || {};
+    const { snapshotType, supplierId, stockDate, lines = [], updatedBy } = req.body || {};
     if (!stockDate || String(stockDate).trim() === '') return res.status(400).json({ error: '재고 기준일은 필수입니다.' });
     if (!updatedBy || String(updatedBy).trim() === '') return res.status(400).json({ error: '수정자는 필수입니다.' });
     const lineList = Array.isArray(lines) ? lines.filter((l) => l.raw_material_id && (l.quantity != null && l.quantity !== '')) : [];
@@ -255,30 +441,21 @@ router.post('/', async (req, res) => {
 
     const type = snapshotType === 'bnk' ? 'bnk' : 'supplier';
     if (type === 'supplier') {
-      const wid = parseInt(supplierWarehouseId, 10);
-      if (Number.isNaN(wid) || wid < 1) return res.status(400).json({ error: '원자재 업체 창고를 선택해 주세요.' });
-      const [wh] = await getPool().query(
-        `SELECT id FROM \`${SUPPLIER_WAREHOUSES_TABLE}\` WHERE id = ? AND deleted = 'N'`,
-        [wid]
+      const sid = parseInt(supplierId, 10);
+      if (Number.isNaN(sid) || sid < 1) return res.status(400).json({ error: '업체를 선택해 주세요.' });
+      const [sup] = await getPool().query(
+        `SELECT id FROM \`${SUPPLIERS_TABLE}\` WHERE id = ? AND deleted = 'N'`,
+        [sid]
       );
-      if (!wh.length) return res.status(400).json({ error: '선택한 창고를 찾을 수 없습니다.' });
-    } else {
-      const wid = parseInt(bnkWarehouseId, 10);
-      if (Number.isNaN(wid) || wid < 1) return res.status(400).json({ error: '비엔케이 창고를 선택해 주세요.' });
-      const [wh] = await getPool().query(
-        `SELECT id FROM \`${BNK_WAREHOUSES_TABLE}\` WHERE id = ? AND deleted = 'N'`,
-        [wid]
-      );
-      if (!wh.length) return res.status(400).json({ error: '선택한 창고를 찾을 수 없습니다.' });
+      if (!sup.length) return res.status(400).json({ error: '선택한 업체를 찾을 수 없습니다.' });
     }
 
     const [result] = await getPool().query(
-      `INSERT INTO \`${SNAPSHOTS_TABLE}\` (snapshot_type, supplier_warehouse_id, bnk_warehouse_id, stock_date, updated_by)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO \`${SNAPSHOTS_TABLE}\` (snapshot_type, supplier_id, stock_date, updated_by)
+       VALUES (?, ?, ?, ?)`,
       [
         type,
-        type === 'supplier' ? parseInt(supplierWarehouseId, 10) : null,
-        type === 'bnk' ? parseInt(bnkWarehouseId, 10) : null,
+        type === 'supplier' ? parseInt(supplierId, 10) : null,
         String(stockDate).trim().slice(0, 10),
         String(updatedBy).trim(),
       ]
@@ -294,12 +471,9 @@ router.post('/', async (req, res) => {
       [lineRows]
     );
     const [snap] = await getPool().query(
-      `SELECT ss.*, sw.name AS supplier_warehouse_name, sup.name AS supplier_name,
-        bw.name AS bnk_warehouse_name
+      `SELECT ss.*, sup.name AS supplier_name
        FROM \`${SNAPSHOTS_TABLE}\` ss
-       LEFT JOIN \`${SUPPLIER_WAREHOUSES_TABLE}\` sw ON sw.id = ss.supplier_warehouse_id AND sw.deleted = 'N'
-       LEFT JOIN \`${SUPPLIERS_TABLE}\` sup ON sup.id = sw.supplier_id AND sup.deleted = 'N'
-       LEFT JOIN \`${BNK_WAREHOUSES_TABLE}\` bw ON bw.id = ss.bnk_warehouse_id AND bw.deleted = 'N'
+       LEFT JOIN \`${SUPPLIERS_TABLE}\` sup ON sup.id = ss.supplier_id AND sup.deleted = 'N'
        WHERE ss.id = ?`,
       [snapshotId]
     );
@@ -322,7 +496,7 @@ router.patch('/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (Number.isNaN(id)) return res.status(400).json({ error: '잘못된 ID입니다.' });
-    const { supplierWarehouseId, bnkWarehouseId, stockDate, lines, updatedBy } = req.body || {};
+    const { supplierId, stockDate, lines, updatedBy } = req.body || {};
 
     const [existing] = await getPool().query(
       `SELECT id FROM \`${SNAPSHOTS_TABLE}\` WHERE id = ? AND deleted = 'N'`,
@@ -336,13 +510,9 @@ router.patch('/:id', async (req, res) => {
       updates.push('stock_date = ?');
       params.push(String(stockDate).trim().slice(0, 10));
     }
-    if (supplierWarehouseId !== undefined) {
-      updates.push('supplier_warehouse_id = ?');
-      params.push(supplierWarehouseId != null && String(supplierWarehouseId).trim() !== '' ? parseInt(supplierWarehouseId, 10) : null);
-    }
-    if (bnkWarehouseId !== undefined) {
-      updates.push('bnk_warehouse_id = ?');
-      params.push(bnkWarehouseId != null && String(bnkWarehouseId).trim() !== '' ? parseInt(bnkWarehouseId, 10) : null);
+    if (supplierId !== undefined) {
+      updates.push('supplier_id = ?');
+      params.push(supplierId != null && String(supplierId).trim() !== '' ? parseInt(supplierId, 10) : null);
     }
     if (updatedBy !== undefined) {
       updates.push('updated_by = ?');
@@ -366,11 +536,9 @@ router.patch('/:id', async (req, res) => {
       }
     }
     const [snap] = await getPool().query(
-      `SELECT ss.*, sw.name AS supplier_warehouse_name, sup.name AS supplier_name, bw.name AS bnk_warehouse_name
+      `SELECT ss.*, sup.name AS supplier_name
        FROM \`${SNAPSHOTS_TABLE}\` ss
-       LEFT JOIN \`${SUPPLIER_WAREHOUSES_TABLE}\` sw ON sw.id = ss.supplier_warehouse_id AND sw.deleted = 'N'
-       LEFT JOIN \`${SUPPLIERS_TABLE}\` sup ON sup.id = sw.supplier_id AND sup.deleted = 'N'
-       LEFT JOIN \`${BNK_WAREHOUSES_TABLE}\` bw ON bw.id = ss.bnk_warehouse_id AND bw.deleted = 'N'
+       LEFT JOIN \`${SUPPLIERS_TABLE}\` sup ON sup.id = ss.supplier_id AND sup.deleted = 'N'
        WHERE ss.id = ?`,
       [id]
     );
@@ -402,6 +570,58 @@ router.delete('/:id', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     logger.error('material-stock delete error', { error: err.message });
+    res.status(500).json({ error: '삭제에 실패했습니다.' });
+  }
+});
+
+// ── 개별 라인 수량 수정 ──
+router.patch('/lines/:lineId', async (req, res) => {
+  try {
+    const lineId = parseInt(req.params.lineId, 10);
+    if (Number.isNaN(lineId)) return res.status(400).json({ error: '잘못된 ID입니다.' });
+    const { quantity, updatedBy } = req.body || {};
+    if (quantity == null || quantity === '') return res.status(400).json({ error: '수량을 입력해 주세요.' });
+    const [existing] = await getPool().query(
+      `SELECT sl.id, sl.snapshot_id FROM \`${LINES_TABLE}\` sl
+       INNER JOIN \`${SNAPSHOTS_TABLE}\` ss ON ss.id = sl.snapshot_id AND ss.deleted = 'N'
+       WHERE sl.id = ?`, [lineId]
+    );
+    if (!existing.length) return res.status(404).json({ error: '재고 라인을 찾을 수 없습니다.' });
+    await getPool().query(`UPDATE \`${LINES_TABLE}\` SET quantity = ? WHERE id = ?`, [Number(quantity) || 0, lineId]);
+    if (updatedBy) {
+      await getPool().query(`UPDATE \`${SNAPSHOTS_TABLE}\` SET updated_by = ? WHERE id = ?`, [String(updatedBy).trim(), existing[0].snapshot_id]);
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error('material-stock line update error', { error: err.message });
+    res.status(500).json({ error: '수정에 실패했습니다.' });
+  }
+});
+
+// ── 개별 라인 삭제 ──
+router.delete('/lines/:lineId', async (req, res) => {
+  try {
+    const lineId = parseInt(req.params.lineId, 10);
+    if (Number.isNaN(lineId)) return res.status(400).json({ error: '잘못된 ID입니다.' });
+    const updatedBy = req.body?.updatedBy != null ? String(req.body.updatedBy).trim() : null;
+    const [existing] = await getPool().query(
+      `SELECT sl.id, sl.snapshot_id FROM \`${LINES_TABLE}\` sl
+       INNER JOIN \`${SNAPSHOTS_TABLE}\` ss ON ss.id = sl.snapshot_id AND ss.deleted = 'N'
+       WHERE sl.id = ?`, [lineId]
+    );
+    if (!existing.length) return res.status(404).json({ error: '재고 라인을 찾을 수 없습니다.' });
+    await getPool().query(`DELETE FROM \`${LINES_TABLE}\` WHERE id = ?`, [lineId]);
+    if (updatedBy) {
+      await getPool().query(`UPDATE \`${SNAPSHOTS_TABLE}\` SET updated_by = ? WHERE id = ?`, [String(updatedBy).trim(), existing[0].snapshot_id]);
+    }
+    // 라인이 모두 삭제되면 스냅샷도 삭제
+    const [[{ cnt }]] = await getPool().query(`SELECT COUNT(*) as cnt FROM \`${LINES_TABLE}\` WHERE snapshot_id = ?`, [existing[0].snapshot_id]);
+    if (cnt === 0) {
+      await getPool().query(`UPDATE \`${SNAPSHOTS_TABLE}\` SET deleted = 'Y', updated_by = ? WHERE id = ?`, [updatedBy, existing[0].snapshot_id]);
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error('material-stock line delete error', { error: err.message });
     res.status(500).json({ error: '삭제에 실패했습니다.' });
   }
 });
