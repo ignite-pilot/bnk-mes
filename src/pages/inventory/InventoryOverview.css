@@ -110,6 +110,27 @@
   text-align: right;
 }
 
+/* 안전재고 */
+.th-safety {
+  background: #fce7f3 !important;
+  color: #9d174d;
+  font-weight: 600;
+}
+
+.td-safety {
+  background: #fdf2f8 !important;
+  text-align: right;
+  color: #9d174d;
+  font-weight: 500;
+}
+
+/* 안전재고 미달 경고 */
+.below-safety {
+  background: #fef2f2 !important;
+  color: #dc2626 !important;
+  font-weight: 700;
+}
+
 /* 행 호버 */
 .inv-table tbody tr:hover td {
   background: #e0e7ff !important;

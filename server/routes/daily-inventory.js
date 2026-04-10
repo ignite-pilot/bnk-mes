@@ -288,10 +288,65 @@ router.get('/overview', async (req, res) => {
         a.color_code.localeCompare(b.color_code)
       );
 
+    // 마스터에서 안전재고 조회
+    const [fpSS] = await pool.query(
+      "SELECT vehicle_code, part_code, color_code, two_width, thickness, ratio, width, `length`, memo, safety_stock FROM master_finished_products WHERE deleted='N' AND safety_stock IS NOT NULL AND safety_stock > 0"
+    );
+    const ssMap = {};
+    for (const r of fpSS) {
+      ssMap[makeKey(r)] = r.safety_stock;
+    }
+    // 안전재고 매핑
+    for (const row of list) {
+      const key = makeKey(row);
+      row.safety_stock = ssMap[key] || null;
+    }
+
     res.json({ list, total: list.length, bulk });
   } catch (err) {
     logger.error('daily-inventory overview error', { error: err.message });
     res.status(500).json({ error: '재고 현황 조회에 실패했습니다.' });
+  }
+});
+
+// ── 안전재고 조회 (마스터 기반) ──
+router.get('/safety-stock', async (req, res) => {
+  try {
+    const pool = getPool();
+    // 완제품 마스터 안전재고
+    const [fp] = await pool.query(
+      "SELECT vehicle_code, part_code, color_code, two_width, thickness, ratio, width, `length`, memo, safety_stock FROM master_finished_products WHERE deleted='N' AND safety_stock IS NOT NULL AND safety_stock > 0"
+    );
+    // 반제품 마스터 안전재고
+    const [sp] = await pool.query(
+      "SELECT vehicle_code, part_code, color_code, safety_stock FROM master_semi_products WHERE deleted='N' AND safety_stock IS NOT NULL AND safety_stock > 0"
+    );
+    // 원자재 마스터 안전재고
+    const [rm] = await pool.query(
+      "SELECT vehicle_code, part_code, color_code, supplier_safety_stock, bnk_warehouse_safety_stock FROM raw_materials WHERE deleted='N' AND (supplier_safety_stock > 0 OR bnk_warehouse_safety_stock > 0)"
+    );
+
+    const map = {};
+    for (const r of fp) {
+      const key = makeKey(r);
+      map[key] = { finished: r.safety_stock };
+    }
+    for (const r of sp) {
+      const key = `${r.vehicle_code}|${r.part_code}|${r.color_code}||||||`;
+      if (!map[key]) map[key] = {};
+      map[key].semi = r.safety_stock;
+    }
+    for (const r of rm) {
+      const key = `${r.vehicle_code}|${r.part_code}|${r.color_code}||||||`;
+      if (!map[key]) map[key] = {};
+      map[key].supplier = r.supplier_safety_stock;
+      map[key].bnk = r.bnk_warehouse_safety_stock;
+    }
+
+    res.json({ map });
+  } catch (err) {
+    logger.error('safety-stock get error', { error: err.message });
+    res.status(500).json({ error: '안전재고 조회 실패' });
   }
 });
 

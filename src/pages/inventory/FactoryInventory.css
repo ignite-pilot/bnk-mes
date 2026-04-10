@@ -202,6 +202,168 @@
   color: #cbd5e1;
 }
 
+/* 뷰 탭 (현재고 관리 / 일자별 조회) */
+.view-tab-bar {
+  display: flex;
+  gap: 0;
+  margin-bottom: 0.75rem;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.view-tab {
+  padding: 0.5rem 1.25rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #64748b;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.view-tab:hover {
+  color: #334155;
+}
+
+.view-tab.active {
+  color: #2563eb;
+  font-weight: 600;
+  border-bottom-color: #2563eb;
+}
+
+/* 달력 UI */
+.cal-month {
+  max-width: 700px;
+  margin-bottom: 1.5rem;
+}
+
+.cal-month-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 0.5rem;
+}
+
+.cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.cal-weekday {
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  padding: 0.25rem 0;
+}
+
+.cal-weekday.weekend {
+  color: #ef4444;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.cal-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0.5rem 0.25rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  min-height: 70px;
+  transition: all 0.15s ease;
+}
+
+.cal-cell:hover:not(.empty):not(.out) {
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.cal-cell.empty {
+  background: transparent;
+  border-color: transparent;
+  min-height: 0;
+}
+
+.cal-cell.out {
+  background: #fafafa;
+  border-color: #f1f5f9;
+}
+
+.cal-cell.today {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px #2563eb;
+  background: #eff6ff;
+}
+
+.cal-cell.weekend {
+  background: #fffbeb;
+}
+
+.cal-cell.weekend.today {
+  background: #eff6ff;
+}
+
+.cal-day {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.cal-cell.weekend .cal-day {
+  color: #ef4444;
+}
+
+.cal-cell.out .cal-day {
+  color: #cbd5e1;
+}
+
+.cal-input {
+  width: 100%;
+  max-width: 72px;
+  text-align: center;
+  padding: 0.3rem 0.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #1e293b;
+  background: #f8fafc;
+  -moz-appearance: textfield;
+}
+
+.cal-input::-webkit-inner-spin-button,
+.cal-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.cal-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.cal-input::placeholder {
+  color: #cbd5e1;
+}
+
+.cal-no-data {
+  font-size: 0.75rem;
+  color: #cbd5e1;
+}
+
 /* 규격 컬럼 우측 정렬 (4~8번째 컬럼) */
 .dsg-cell:nth-child(n+4):nth-child(-n+8) .dsg-cell-content {
   text-align: right;

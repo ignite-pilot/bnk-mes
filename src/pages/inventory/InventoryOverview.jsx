@@ -131,6 +131,7 @@ function InventoryOverview() {
     { key: 'qty_us_foam_raw', label: '미처리 폼' },
     { key: 'qty_us_foam_primer', label: '폼 프라이머' },
     { key: 'qty_us_finished', label: '완제품' },
+    { key: 'safety_stock', label: '안전재고' },
   ];
 
   const totalCols = 3 + specColumns.length + gjColumns.length + usColumns.length;
@@ -213,12 +214,13 @@ function InventoryOverview() {
                 <th className="th-info" rowSpan={2}>칼라</th>
                 <th className="th-spec" colSpan={6}>규격</th>
                 <th className="th-gj" colSpan={gjColumns.length}>경주 공장</th>
-                <th className="th-us" colSpan={usColumns.length}>울산 공장</th>
+                <th className="th-us" colSpan={usColumns.length - 1}>울산 공장</th>
+                <th className="th-safety" rowSpan={2}>안전재고</th>
               </tr>
               <tr>
                 {specColumns.map(c => <th key={c.key} className="th-spec">{c.label}</th>)}
                 {gjColumns.map(c => <th key={c.key} className="th-gj">{c.label}</th>)}
-                {usColumns.map(c => <th key={c.key} className="th-us">{c.label}</th>)}
+                {usColumns.filter(c => c.key !== 'safety_stock').map(c => <th key={c.key} className="th-us">{c.label}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -243,11 +245,17 @@ function InventoryOverview() {
                         {row[c.key] != null ? Number(row[c.key]).toLocaleString() : ''}
                       </td>
                     ))}
-                    {usColumns.map(c => (
-                      <td key={c.key} className="td-us">
-                        {row[c.key] != null ? Number(row[c.key]).toLocaleString() : ''}
-                      </td>
-                    ))}
+                    {usColumns.map(c => {
+                      const val = row[c.key];
+                      const isSafety = c.key === 'safety_stock';
+                      const isFinished = c.key === 'qty_us_finished';
+                      const belowSafety = isFinished && row.safety_stock > 0 && Number(row.qty_us_finished) < Number(row.safety_stock);
+                      return (
+                        <td key={c.key} className={`${isSafety ? 'td-safety' : 'td-us'}${belowSafety ? ' below-safety' : ''}`}>
+                          {val != null ? Number(val).toLocaleString() : ''}
+                        </td>
+                      );
+                    })}
                   </tr>
                 );
               })}
