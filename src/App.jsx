@@ -24,6 +24,7 @@ import DeliveryRequest from './pages/delivery/DeliveryRequest';
 import MasterMaterialInfo from './pages/master/MasterMaterialInfo';
 import MasterFinishedProduct from './pages/master/MasterFinishedProduct';
 import MasterSemiProduct from './pages/master/MasterSemiProduct';
+import ProductionPlan3M from './pages/production/ProductionPlan3M';
 import ChatPanel from './components/ChatPanel';
 import { menuConfig } from './config/menu';
 
@@ -49,7 +50,8 @@ function App() {
       p.path !== '/delivery/inbound' &&
       p.path !== '/master/material' &&
       p.path !== '/master/finished-product' &&
-      p.path !== '/master/semi-product'
+      p.path !== '/master/semi-product' &&
+      p.path !== '/production/plan-3m'
   );
 
   return (
@@ -76,6 +78,7 @@ function App() {
           <Route path="master/material" element={<MasterMaterialInfo />} />
           <Route path="master/finished-product" element={<MasterFinishedProduct />} />
           <Route path="master/semi-product" element={<MasterSemiProduct />} />
+          <Route path="production/plan-3m" element={<ProductionPlan3M />} />
           {allPaths.map(({ path, title }) => (
             <Route
               key={path}
