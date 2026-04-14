@@ -66,7 +66,7 @@ function MasterSemiProduct() {
   const handleSearch = (e) => { e.preventDefault(); setPage(1); fetchList(); };
   const handleResetSearch = () => { setSearch({ semiType: '', vehicleCode: '', partCode: '', colorCode: '' }); setPage(1); };
 
-  const emptyForm = () => ({ semi_type: '', vehicle_code: '', vehicle_name: '', part_code: '', part_name: '', color_code: '', color_name: '', supplier: '', thickness: '', width: '', ratio: '', safety_stock: '' });
+  const emptyForm = () => ({ semi_type: '', vehicle_code: '', vehicle_name: '', part_code: '', part_name: '', color_code: '', color_name: '', supplier: '', thickness: '', width: '', ratio: '', safety_stock: '', production_time: '' });
 
   const openAdd = () => { setFormMode('add'); setFormData(emptyForm()); setFormError(''); setFormOpen(true); };
   const openView = async (id) => {
@@ -77,7 +77,7 @@ function MasterSemiProduct() {
       setFormMode('view'); setFormData(data); setFormOpen(true);
     } catch { setFormError('조회 오류'); }
   };
-  const openEdit = (row) => { setFormMode('edit'); setFormData({ ...row, thickness: row.thickness ?? '', width: row.width ?? '', ratio: row.ratio ?? '', safety_stock: row.safety_stock ?? '' }); setFormError(''); setFormOpen(true); };
+  const openEdit = (row) => { setFormMode('edit'); setFormData({ ...row, thickness: row.thickness ?? '', width: row.width ?? '', ratio: row.ratio ?? '', safety_stock: row.safety_stock ?? '', production_time: row.production_time ?? '' }); setFormError(''); setFormOpen(true); };
   const closeForm = () => { setFormOpen(false); setFormData(null); setFormError(''); fetchList(); };
 
   const buildBody = () => ({
@@ -90,6 +90,7 @@ function MasterSemiProduct() {
     width: formData.width !== '' ? Number(formData.width) : null,
     ratio: formData.ratio !== '' ? Number(formData.ratio) : null,
     safety_stock: formData.safety_stock !== '' ? Number(formData.safety_stock) : null,
+    production_time: formData.production_time !== '' ? Number(formData.production_time) : null,
   });
 
   const handleSubmitAdd = async (e) => {
@@ -256,13 +257,14 @@ function MasterSemiProduct() {
                   <th>배율</th>
                   <th>폭</th>
                   <th>안전재고</th>
+                  <th>생산시간(분)</th>
                 </>}
                 <th>기능</th>
               </tr>
             </thead>
             <tbody>
               {list.length === 0 ? (
-                <tr><td colSpan={isMobile ? 3 : 11} className={styles.empty}>조회된 반제품이 없습니다.</td></tr>
+                <tr><td colSpan={isMobile ? 3 : 12} className={styles.empty}>조회된 반제품이 없습니다.</td></tr>
               ) : list.map(row => (
                 <tr key={row.id} onClick={() => openView(row.id)} style={{ cursor: 'pointer' }}>
                   <EllipsisCell>{renderCell(row.semi_type)}</EllipsisCell>
@@ -275,6 +277,7 @@ function MasterSemiProduct() {
                     <EllipsisCell>{formatNum(row.ratio)}</EllipsisCell>
                     <EllipsisCell>{formatNum(row.width)}</EllipsisCell>
                     <EllipsisCell>{row.safety_stock != null ? String(row.safety_stock) : '-'}</EllipsisCell>
+                    <EllipsisCell>{row.production_time != null ? String(row.production_time) : '-'}</EllipsisCell>
                   </>}
                   <td onClick={(e) => e.stopPropagation()}>
                     <button type="button" className={styles.btnSmall} onClick={() => openEdit(row)}>수정</button>
@@ -332,7 +335,7 @@ function MasterSemiProduct() {
                 </div>
                 <h3 style={{ fontSize: '0.8125rem', color: '#64748b', margin: '1rem 0 0.5rem', fontWeight: 600 }}>규격</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginBottom: '1rem' }}>
-                  {[{ label: '두께', value: formatNum(formData.thickness) }, { label: '폭', value: formatNum(formData.width) }, { label: '배율', value: formatNum(formData.ratio) }, { label: '안전재고', value: formData.safety_stock != null ? String(formData.safety_stock) : '-' }].map(item => (
+                  {[{ label: '두께', value: formatNum(formData.thickness) }, { label: '폭', value: formatNum(formData.width) }, { label: '배율', value: formatNum(formData.ratio) }, { label: '안전재고', value: formData.safety_stock != null ? String(formData.safety_stock) : '-' }, { label: '생산시간(분)', value: formData.production_time != null ? String(formData.production_time) : '-' }].map(item => (
                     <div key={item.label} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '0.6rem 0.5rem', textAlign: 'center' }}>
                       <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginBottom: 2 }}>{item.label}</div>
                       <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#1e293b' }}>{item.value}</div>
@@ -366,6 +369,7 @@ function MasterSemiProduct() {
                 <label className={styles.label}>폭<input type="number" step="any" min="0" value={formData.width} onChange={e => setFormData(f => ({ ...f, width: e.target.value }))} className={styles.input} /></label>
                 <label className={styles.label}>배율<input type="number" step="any" min="0" value={formData.ratio} onChange={e => setFormData(f => ({ ...f, ratio: e.target.value }))} className={styles.input} /></label>
                 <label className={styles.label}>안전재고<input type="number" min="0" value={formData.safety_stock} onChange={e => setFormData(f => ({ ...f, safety_stock: e.target.value }))} className={styles.input} /></label>
+                <label className={styles.label}>생산시간(분)<input type="number" min="0" value={formData.production_time} onChange={e => setFormData(f => ({ ...f, production_time: e.target.value }))} className={styles.input} /></label>
                 <div className={styles.formActions}>
                   <button type="submit" className={styles.btnPrimary} disabled={formSaving}>{formSaving ? '저장 중...' : formMode === 'add' ? '등록' : '수정'}</button>
                   <button type="button" className={styles.btnSecondary} onClick={closeForm}>취소</button>
