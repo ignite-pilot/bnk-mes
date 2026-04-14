@@ -4,6 +4,7 @@
  * - 등록/수정/삭제 시 수정일자, 수정자 갱신
  */
 import { Router } from 'express';
+import { sendXlsx } from '../lib/excel-export.js';
 import { getPool } from '../lib/db.js';
 import {
   countDeliveryRequestItemRefs,
@@ -104,41 +105,26 @@ router.get('/export-excel', async (req, res) => {
       params
     );
 
-    const BOM = '\uFEFF';
-    const header = '완제품 코드,납품사 연계 업체,완성차 회사,차량 코드,차량 이름,부위 코드,부위 이름,색상 코드,색상 이름,두께,폭,두폭,길이,배율,수정일자,수정자\n';
-    const toCsvCell = (v) => {
-      if (v == null) return '';
-      const s = String(v);
-      return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const body = rows
-      .map(
-        (r) =>
-          [
-            toCsvCell(r.code),
-            toCsvCell(r.affiliate_name),
-            toCsvCell(r.car_company),
-            toCsvCell(r.vehicle_code),
-            toCsvCell(r.vehicle_name),
-            toCsvCell(r.part_code),
-            toCsvCell(r.part_name),
-            toCsvCell(r.color_code),
-            toCsvCell(r.color_name),
-            toCsvCell(r.thickness),
-            toCsvCell(r.width),
-            toCsvCell(r.two_width),
-            toCsvCell(r.length),
-            toCsvCell(r.ratio),
-            toCsvCell(r.updated_at ? new Date(r.updated_at).toISOString().slice(0, 19).replace('T', ' ') : ''),
-            toCsvCell(r.updated_by),
-          ].join(',')
-      )
-      .join('\n');
-    const csv = BOM + header + body;
-
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="delivery_finished_products.csv"');
-    res.send(csv);
+    const headers = [['완제품 코드', '납품사 연계 업체', '완성차 회사', '차량 코드', '차량 이름', '부위 코드', '부위 이름', '색상 코드', '색상 이름', '두께', '폭', '두폭', '길이', '배율', '수정일자', '수정자']];
+    const data = rows.map((r) => [
+      r.code ?? '',
+      r.affiliate_name ?? '',
+      r.car_company ?? '',
+      r.vehicle_code ?? '',
+      r.vehicle_name ?? '',
+      r.part_code ?? '',
+      r.part_name ?? '',
+      r.color_code ?? '',
+      r.color_name ?? '',
+      r.thickness ?? '',
+      r.width ?? '',
+      r.two_width ?? '',
+      r.length ?? '',
+      r.ratio ?? '',
+      r.updated_at ? new Date(r.updated_at).toISOString().slice(0, 19).replace('T', ' ') : '',
+      r.updated_by ?? '',
+    ]);
+    sendXlsx(res, headers, data, '납품사완제품정보');
   } catch (err) {
     logger.error('delivery-finished-product export error', { error: err.message });
     res.status(500).json({ error: '엑셀 다운로드에 실패했습니다.' });

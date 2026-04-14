@@ -4,6 +4,7 @@
  * - 등록/수정/삭제 시 수정일자, 수정자 갱신
  */
 import { Router } from 'express';
+import { sendXlsx } from '../lib/excel-export.js';
 import { getPool } from '../lib/db.js';
 import logger from '../lib/logger.js';
 
@@ -37,35 +38,20 @@ router.get('/export-excel', async (req, res) => {
       params
     );
 
-    const BOM = '\uFEFF';
-    const header = '납품처 이름,주소,연락처,담당자,담당자 연락처,담당자 email,완제품 수,반제품 수,수정일자,수정자\n';
-    const toCsvCell = (v) => {
-      if (v == null) return '';
-      const s = String(v);
-      return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const body = rows
-      .map(
-        (r) =>
-          [
-            toCsvCell(r.name),
-            toCsvCell(r.address),
-            toCsvCell(r.contact),
-            toCsvCell(r.manager_name),
-            toCsvCell(r.manager_contact),
-            toCsvCell(r.manager_email),
-            toCsvCell(r.finished_product_count),
-            toCsvCell(r.semi_product_count),
-            toCsvCell(r.updated_at ? new Date(r.updated_at).toISOString().slice(0, 19).replace('T', ' ') : ''),
-            toCsvCell(r.updated_by),
-          ].join(',')
-      )
-      .join('\n');
-    const csv = BOM + header + body;
-
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="delivery_suppliers.csv"');
-    res.send(csv);
+    const headers = [['납품처 이름', '주소', '연락처', '담당자', '담당자 연락처', '담당자 email', '완제품 수', '반제품 수', '수정일자', '수정자']];
+    const data = rows.map((r) => [
+      r.name ?? '',
+      r.address ?? '',
+      r.contact ?? '',
+      r.manager_name ?? '',
+      r.manager_contact ?? '',
+      r.manager_email ?? '',
+      r.finished_product_count ?? '',
+      r.semi_product_count ?? '',
+      r.updated_at ? new Date(r.updated_at).toISOString().slice(0, 19).replace('T', ' ') : '',
+      r.updated_by ?? '',
+    ]);
+    sendXlsx(res, headers, data, '납품처정보');
   } catch (err) {
     logger.error('delivery-supplier export error', { error: err.message });
     res.status(500).json({ error: '엑셀 다운로드에 실패했습니다.' });

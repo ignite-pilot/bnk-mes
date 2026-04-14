@@ -1,4 +1,5 @@
 import express, { Router } from 'express';
+import { sendXlsx, buildXlsxFilename } from '../lib/excel-export.js';
 import { getPool } from '../lib/db.js';
 import logger from '../lib/logger.js';
 import { getAllCodeMaps } from '../lib/config-codes.js';
@@ -8,7 +9,7 @@ const router = Router();
 const TABLE = 'master_finished_products';
 
 const LIST_SELECT = `SELECT id, code, vehicle_code, vehicle_name, part_code, part_name,
-  color_code, color_name, supplier, two_width, thickness, ratio, width, \`length\`, safety_stock,
+  color_code, color_name, supplier, two_width, thickness, ratio, width, \`length\`, memo, safety_stock, production_time,
   created_at, updated_at, created_by, updated_by
   FROM \`${TABLE}\``;
 
@@ -33,12 +34,47 @@ export const listHandler = async (req, res) => {
   }
 };
 
-export const templateDownload = (req, res) => {
-  const BOM = '\uFEFF';
-  const header = '완제품코드,업체,차종코드,차종명,적용부코드,적용부명,색상코드,색상명,두폭,두께,배율,폭,길이\n';
-  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', 'attachment; filename="finished_products_template.csv"');
-  res.send(BOM + header);
+export const templateDownload = async (req, res) => {
+  try {
+    const XLSX = (await import('xlsx')).default;
+    const { getAllCodeMaps } = await import('../lib/config-codes.js');
+    const { vehicleMap, partMap, colorMap } = await getAllCodeMaps();
+
+    const wb = XLSX.utils.book_new();
+
+    // 시트1: 업로드 양식
+    const templateData = [['완제품코드', '업체', '차종코드', '차종명', '적용부코드', '적용부명', '색상코드', '색상명', '두폭', '두께', '배율', '폭', '길이', '생산시간(분)']];
+    const ws1 = XLSX.utils.aoa_to_sheet(templateData);
+    ws1['!cols'] = templateData[0].map(() => ({ wch: 14 }));
+    XLSX.utils.book_append_sheet(wb, ws1, '업로드양식');
+
+    // 시트2: 코드 참조
+    const maxLen = Math.max(Object.keys(vehicleMap).length, Object.keys(partMap).length, Object.keys(colorMap).length);
+    const vehicleEntries = Object.entries(vehicleMap);
+    const partEntries = Object.entries(partMap);
+    const colorEntries = Object.entries(colorMap);
+
+    const refData = [['차종코드', '차종명', '', '적용부코드', '적용부명', '', '색상코드', '색상명']];
+    for (let i = 0; i < maxLen; i++) {
+      refData.push([
+        vehicleEntries[i]?.[0] || '', vehicleEntries[i]?.[1] || '', '',
+        partEntries[i]?.[0] || '', partEntries[i]?.[1] || '', '',
+        colorEntries[i]?.[0] || '', colorEntries[i]?.[1] || '',
+      ]);
+    }
+    const ws2 = XLSX.utils.aoa_to_sheet(refData);
+    ws2['!cols'] = [{ wch: 18 }, { wch: 18 }, { wch: 3 }, { wch: 22 }, { wch: 22 }, { wch: 3 }, { wch: 10 }, { wch: 10 }];
+    XLSX.utils.book_append_sheet(wb, ws2, '코드참조');
+
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    const fn = encodeURIComponent(buildXlsxFilename('완제품정보_템플릿'));
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${fn}"; filename*=UTF-8''${fn}`);
+    res.send(buf);
+  } catch (err) {
+    logger.error('master-fp template error', { error: err.message });
+    res.status(500).json({ error: '템플릿 다운로드 실패' });
+  }
 };
 
 export const exportExcel = async (req, res) => {
@@ -51,28 +87,10 @@ export const exportExcel = async (req, res) => {
     if (colorCode) { where += ' AND color_code = ?'; params.push(colorCode); }
 
     const [rows] = await getPool().query(`${LIST_SELECT} ${where} ORDER BY id DESC`, params);
-
-    const BOM = '\uFEFF';
-    const header = '완제품코드,업체,차종코드,차종명,적용부코드,적용부명,색상코드,색상명,두폭,두께,배율,폭,길이,등록일자,수정일자,등록자,수정자\n';
-    const toCsvCell = (v) => {
-      if (v == null) return '';
-      const s = String(v);
-      return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const body = (rows || []).map((r) => [
-      toCsvCell(r.code), toCsvCell(r.supplier),
-      toCsvCell(r.vehicle_code), toCsvCell(r.vehicle_name),
-      toCsvCell(r.part_code), toCsvCell(r.part_name),
-      toCsvCell(r.color_code), toCsvCell(r.color_name),
-      toCsvCell(r.two_width), toCsvCell(r.thickness), toCsvCell(r.ratio), toCsvCell(r.width), toCsvCell(r.length),
-      toCsvCell(r.created_at ? new Date(r.created_at).toISOString().slice(0, 19).replace('T', ' ') : ''),
-      toCsvCell(r.updated_at ? new Date(r.updated_at).toISOString().slice(0, 19).replace('T', ' ') : ''),
-      toCsvCell(r.created_by), toCsvCell(r.updated_by),
-    ].join(',')).join('\n');
-
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="master_finished_products.csv"');
-    res.send(BOM + header + body);
+    const fmtDt = (v) => v ? new Date(v).toISOString().slice(0, 19).replace('T', ' ') : '';
+    const headers = [['완제품코드','업체','차종코드','차종명','적용부코드','적용부명','색상코드','색상명','두폭','두께','배율','폭','길이','생산시간(분)','등록일자','수정일자','등록자','수정자']];
+    const data = (rows || []).map(r => [r.code, r.supplier, r.vehicle_code, r.vehicle_name, r.part_code, r.part_name, r.color_code, r.color_name, r.two_width, r.thickness, r.ratio, r.width, r.length, r.production_time, fmtDt(r.created_at), fmtDt(r.updated_at), r.created_by, r.updated_by]);
+    sendXlsx(res, headers, data, '완제품정보');
   } catch (err) {
     logger.error('master-fp export error', { error: err.message });
     res.status(500).json({ error: '엑셀 다운로드에 실패했습니다.' });
@@ -158,14 +176,14 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { code, vehicle_code, vehicle_name, part_code, part_name, color_code, color_name, supplier, two_width, thickness, ratio, width, length, safety_stock, createdBy } = req.body || {};
+    const { code, vehicle_code, vehicle_name, part_code, part_name, color_code, color_name, supplier, two_width, thickness, ratio, width, length, safety_stock, production_time, createdBy } = req.body || {};
     if (!createdBy) return res.status(400).json({ error: '등록자는 필수입니다.' });
 
     const [result] = await getPool().query(
-      `INSERT INTO \`${TABLE}\` (code, vehicle_code, vehicle_name, part_code, part_name, color_code, color_name, supplier, two_width, thickness, ratio, width, \`length\`, safety_stock, created_by, updated_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO \`${TABLE}\` (code, vehicle_code, vehicle_name, part_code, part_name, color_code, color_name, supplier, two_width, thickness, ratio, width, \`length\`, safety_stock, production_time, created_by, updated_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [code||null, vehicle_code||null, vehicle_name||null, part_code||null, part_name||null, color_code||null, color_name||null, supplier||null,
        two_width!=null?Number(two_width):null, thickness!=null?Number(thickness):null, ratio!=null?Number(ratio):null, width!=null?Number(width):null, length!=null?Number(length):null,
-       safety_stock!=null?Number(safety_stock):null,
+       safety_stock!=null?Number(safety_stock):null, production_time!=null?Number(production_time):null,
        String(createdBy).trim(), String(createdBy).trim()]
     );
     const [rows] = await getPool().query(`${LIST_SELECT} WHERE id = ?`, [result.insertId]);
@@ -185,7 +203,7 @@ router.patch('/:id', async (req, res) => {
     if (!existing.length) return res.status(404).json({ error: '완제품을 찾을 수 없습니다.' });
 
     const fields = ['code','vehicle_code','vehicle_name','part_code','part_name','color_code','color_name','supplier'];
-    const numFields = ['two_width','thickness','ratio','width','safety_stock'];
+    const numFields = ['two_width','thickness','ratio','width','safety_stock','production_time'];
     const updates = []; const params = [];
     for (const f of fields) { if (b[f] !== undefined) { updates.push(`${f}=?`); params.push(b[f]||null); } }
     for (const f of numFields) { if (b[f] !== undefined) { updates.push(`${f}=?`); params.push(b[f]!=null?Number(b[f]):null); } }

@@ -4,6 +4,7 @@
  * - 삭제 플래그, 수정일자·수정자, 페이지네이션, 이메일 발송(ig-notification)
  */
 import { Router } from 'express';
+import { sendXlsx } from '../lib/excel-export.js';
 import { getPool } from '../lib/db.js';
 import logger from '../lib/logger.js';
 import { optionalSqlDateRange } from '../lib/dateUtils.js';
@@ -110,26 +111,17 @@ export async function exportExcel(req, res) {
         LIMIT ?
       `;
       const [rows] = await getPool().query(sql, [...params, exportLimit]);
-      const header = '입고 요청일,입고 희망일,원자재 업체,원자재 종류,원자재 명,수량,입고 상태\n';
-      const body = (rows || [])
-        .map(
-          (r) =>
-            [
-              toCsvCell(toDateString(r.request_date)),
-              toCsvCell(toDateString(r.desired_date)),
-              toCsvCell(r.supplier_name),
-              toCsvCell(r.raw_material_kind),
-              toCsvCell(r.raw_material_name),
-              toCsvCell(r.quantity),
-              toCsvCell(STATUS_LABEL[r.line_status] || r.line_status),
-            ].join(',')
-        )
-        .join('\n');
-      const BOM = '\uFEFF';
-      const csv = BOM + header + body;
-      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-      res.setHeader('Content-Disposition', 'attachment; filename="material_inbound_lines.csv"');
-      return res.send(csv);
+      const headers = [['입고 요청일', '입고 희망일', '원자재 업체', '원자재 종류', '원자재 명', '수량', '입고 상태']];
+      const data = (rows || []).map((r) => [
+        toDateString(r.request_date) ?? '',
+        toDateString(r.desired_date) ?? '',
+        r.supplier_name ?? '',
+        r.raw_material_kind ?? '',
+        r.raw_material_name ?? '',
+        r.quantity ?? '',
+        STATUS_LABEL[r.line_status] || r.line_status || '',
+      ]);
+      return sendXlsx(res, headers, data, '원자재입고내역');
     }
 
     const wherePartsReq = ["r.deleted = 'N'"];
@@ -181,24 +173,15 @@ export async function exportExcel(req, res) {
       if (rec >= 1 || ret >= 1) return '부분 입고/반품';
       return '입고 요청';
     };
-    const header = '입고 요청일,입고 희망일,원자재 업체,원자재 종류 개수,상태\n';
-    const body = (rows || [])
-      .map(
-        (r) =>
-          [
-            toCsvCell(toDateString(r.request_date)),
-            toCsvCell(toDateString(r.desired_date)),
-            toCsvCell(r.supplier_name),
-            toCsvCell(r.material_kind_count),
-            toCsvCell(toStatusLabel(r)),
-          ].join(',')
-      )
-      .join('\n');
-    const BOM = '\uFEFF';
-    const csv = BOM + header + body;
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="material_inbound_requests.csv"');
-    res.send(csv);
+    const headers = [['입고 요청일', '입고 희망일', '원자재 업체', '원자재 종류 개수', '상태']];
+    const data = (rows || []).map((r) => [
+      toDateString(r.request_date) ?? '',
+      toDateString(r.desired_date) ?? '',
+      r.supplier_name ?? '',
+      r.material_kind_count ?? '',
+      toStatusLabel(r),
+    ]);
+    sendXlsx(res, headers, data, '원자재입고요청');
   } catch (err) {
     logger.error('material-inbound export-excel error', { error: err.message });
     res.status(500).json({ error: '엑셀 다운로드에 실패했습니다.', detail: err.message });

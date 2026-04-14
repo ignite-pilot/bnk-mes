@@ -6,6 +6,7 @@
  * - 엑셀 다운로드
  */
 import express, { Router } from 'express';
+import { sendXlsx } from '../lib/excel-export.js';
 import { getPool } from '../lib/db.js';
 import logger from '../lib/logger.js';
 import XLSX from 'xlsx';
@@ -197,25 +198,9 @@ router.get('/export-excel', async (req, res) => {
       `SELECT * FROM \`${TABLE}\` ${where} ORDER BY sort_order, id`, params
     );
 
-    const BOM = '\uFEFF';
-    const header = '차종,부위,칼라,완제품코드,업체,두폭,두께,배율,폭,길이,경주상지(M),경주표지(M),울산표지(M),하지(M),폼총수량(M),미처리폼(M),프라이머(M),완제품(EA),재고기준일\n';
-    const toCsv = (v) => {
-      if (v == null) return '';
-      const s = String(v);
-      return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const body = rows.map(r => [
-      toCsv(r.vehicle_code), toCsv(r.part_code), toCsv(r.color_code),
-      toCsv(r.product_code), toCsv(r.supplier),
-      toCsv(r.two_width), toCsv(r.thickness), toCsv(r.ratio), toCsv(r.width), toCsv(r.length),
-      toCsv(r.qty_gj_sangji), toCsv(r.qty_gj_pyoji), toCsv(r.qty_us_pyoji), toCsv(r.qty_haji),
-      toCsv(r.qty_foam_total), toCsv(r.qty_foam_raw), toCsv(r.qty_primer), toCsv(r.qty_finished),
-      r.stock_date ? new Date(r.stock_date).toISOString().slice(0, 10) : '',
-    ].join(',')).join('\n');
-
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="inventory_overview.csv"');
-    res.send(BOM + header + body);
+    const headers = [['차종', '부위', '칼라', '완제품코드', '업체', '두폭', '두께', '배율', '폭', '길이', '경주상지(M)', '경주표지(M)', '울산표지(M)', '하지(M)', '폼총수량(M)', '미처리폼(M)', '프라이머(M)', '완제품(EA)', '재고기준일']];
+    const data = (rows || []).map(r => []);
+    sendXlsx(res, headers, data, '재고현황');
   } catch (err) {
     logger.error('inventory-overview export error', { error: err.message });
     res.status(500).json({ error: '엑셀 다운로드에 실패했습니다.' });

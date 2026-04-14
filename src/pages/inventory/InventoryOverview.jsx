@@ -69,7 +69,7 @@ function InventoryOverview() {
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = 'inventory_overview.csv'; a.style.display = 'none';
+      a.href = url; a.download = 'inventory_overview.xlsx'; a.style.display = 'none';
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       setTimeout(() => window.URL.revokeObjectURL(url), 200);
     } catch { setError('다운로드 중 오류'); }

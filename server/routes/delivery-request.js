@@ -4,6 +4,7 @@
  * - 삭제 플래그, 수정일자·수정자, 페이지네이션
  */
 import { Router } from 'express';
+import { sendXlsx } from '../lib/excel-export.js';
 import { getPool } from '../lib/db.js';
 import logger from '../lib/logger.js';
 
@@ -69,27 +70,17 @@ export async function exportExcel(req, res) {
       params
     );
 
-    const BOM = '\uFEFF';
-    const header = '납품사,납품 요청일,납품 희망일,상태,품목 수,수정일자,수정자\n';
-    const body = (rows || [])
-      .map(
-        (r) =>
-          [
-            toCsvCell(r.supplier_name),
-            toCsvCell(toDateString(r.request_date)),
-            toCsvCell(toDateString(r.desired_date)),
-            toCsvCell(r.status),
-            toCsvCell(r.item_count),
-            toCsvCell(r.updated_at ? new Date(r.updated_at).toISOString().slice(0, 19).replace('T', ' ') : ''),
-            toCsvCell(r.updated_by),
-          ].join(',')
-      )
-      .join('\n');
-    const csv = BOM + header + body;
-
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="delivery_requests.csv"');
-    res.send(csv);
+    const headers = [['납품사', '납품 요청일', '납품 희망일', '상태', '품목 수', '수정일자', '수정자']];
+    const data = (rows || []).map((r) => [
+      r.supplier_name ?? '',
+      toDateString(r.request_date) ?? '',
+      toDateString(r.desired_date) ?? '',
+      r.status ?? '',
+      r.item_count ?? '',
+      r.updated_at ? new Date(r.updated_at).toISOString().slice(0, 19).replace('T', ' ') : '',
+      r.updated_by ?? '',
+    ]);
+    sendXlsx(res, headers, data, '납품요청');
   } catch (err) {
     logger.error('delivery-request export error', { error: err.message });
     res.status(500).json({ error: '엑셀 다운로드에 실패했습니다.' });

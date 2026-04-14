@@ -4,6 +4,7 @@
  * - 등록/수정/삭제 시 수정일자, 수정자 갱신
  */
 import { Router } from 'express';
+import { sendXlsx } from '../lib/excel-export.js';
 import { getPool } from '../lib/db.js';
 import logger from '../lib/logger.js';
 
@@ -47,38 +48,23 @@ router.get('/export-excel', async (req, res) => {
       params
     );
 
-    const BOM = '\uFEFF';
-    const header = '업체 명,우편번호,주소,상세주소,업체 연락처,담당자,담당자 연락처,담당자 이메일,입고 리드타임(일),발주 리드타임(일),취급 원자재 개수,수정일자,수정자\n';
-    const toCsvCell = (v) => {
-      if (v == null) return '';
-      const s = String(v);
-      return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const body = rows
-      .map(
-        (r) =>
-          [
-            toCsvCell(r.name),
-            toCsvCell(r.postal_code),
-            toCsvCell(r.address),
-            toCsvCell(r.address_detail),
-            toCsvCell(r.contact),
-            toCsvCell(r.manager_name),
-            toCsvCell(r.manager_contact),
-            toCsvCell(r.manager_email),
-            toCsvCell(r.inbound_lead_time),
-            toCsvCell(r.order_lead_time),
-            toCsvCell(r.material_count),
-            toCsvCell(r.updated_at ? new Date(r.updated_at).toISOString().slice(0, 19).replace('T', ' ') : ''),
-            toCsvCell(r.updated_by),
-          ].join(',')
-      )
-      .join('\n');
-    const csv = BOM + header + body;
-
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="raw_material_suppliers.csv"');
-    res.send(csv);
+    const headers = [['업체 명', '우편번호', '주소', '상세주소', '업체 연락처', '담당자', '담당자 연락처', '담당자 이메일', '입고 리드타임(일)', '발주 리드타임(일)', '취급 원자재 개수', '수정일자', '수정자']];
+    const data = rows.map((r) => [
+      r.name ?? '',
+      r.postal_code ?? '',
+      r.address ?? '',
+      r.address_detail ?? '',
+      r.contact ?? '',
+      r.manager_name ?? '',
+      r.manager_contact ?? '',
+      r.manager_email ?? '',
+      r.inbound_lead_time ?? '',
+      r.order_lead_time ?? '',
+      r.material_count ?? '',
+      r.updated_at ? new Date(r.updated_at).toISOString().slice(0, 19).replace('T', ' ') : '',
+      r.updated_by ?? '',
+    ]);
+    sendXlsx(res, headers, data, '원자재공급업체');
   } catch (err) {
     logger.error('material-supplier export error', { error: err.message });
     res.status(500).json({ error: '엑셀 다운로드에 실패했습니다.' });

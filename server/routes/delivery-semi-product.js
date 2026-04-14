@@ -4,6 +4,7 @@
  * - 등록/수정/삭제 시 수정일자, 수정자 갱신
  */
 import { Router } from 'express';
+import { sendXlsx } from '../lib/excel-export.js';
 import { getPool } from '../lib/db.js';
 import { countDeliveryRequestItemRefs } from '../lib/delivery-request-items.js';
 import logger from '../lib/logger.js';
@@ -78,35 +79,20 @@ router.get('/export-excel', async (req, res) => {
       params
     );
 
-    const BOM = '\uFEFF';
-    const header = '반제품 종류,차량 코드,부위 코드,색상 코드,납품 업체,배율,두께,폭,수정일자,수정자\n';
-    const toCsvCell = (v) => {
-      if (v == null) return '';
-      const s = String(v);
-      return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const body = rows
-      .map(
-        (r) =>
-          [
-            toCsvCell(r.semi_product_type),
-            toCsvCell(r.vehicle_code),
-            toCsvCell(r.part_code),
-            toCsvCell(r.color_code),
-            toCsvCell(r.supplier_name),
-            toCsvCell(r.ratio),
-            toCsvCell(r.thickness),
-            toCsvCell(r.width),
-            toCsvCell(r.updated_at ? new Date(r.updated_at).toISOString().slice(0, 19).replace('T', ' ') : ''),
-            toCsvCell(r.updated_by),
-          ].join(',')
-      )
-      .join('\n');
-    const csv = BOM + header + body;
-
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="delivery_semi_products.csv"');
-    res.send(csv);
+    const headers = [['반제품 종류', '차량 코드', '부위 코드', '색상 코드', '납품 업체', '배율', '두께', '폭', '수정일자', '수정자']];
+    const data = rows.map((r) => [
+      r.semi_product_type ?? '',
+      r.vehicle_code ?? '',
+      r.part_code ?? '',
+      r.color_code ?? '',
+      r.supplier_name ?? '',
+      r.ratio ?? '',
+      r.thickness ?? '',
+      r.width ?? '',
+      r.updated_at ? new Date(r.updated_at).toISOString().slice(0, 19).replace('T', ' ') : '',
+      r.updated_by ?? '',
+    ]);
+    sendXlsx(res, headers, data, '납품사반제품정보');
   } catch (err) {
     logger.error('delivery-semi-product export error', { error: err.message });
     res.status(500).json({ error: '엑셀 다운로드에 실패했습니다.' });

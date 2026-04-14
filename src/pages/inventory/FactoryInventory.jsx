@@ -289,7 +289,9 @@ function FactoryInventory({ factory, title }) {
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     XLSX.utils.book_append_sheet(wb, ws, '일자별재고');
-    XLSX.writeFile(wb, `${tabLabel}_일자별재고_${dateRange.start}_${dateRange.end}.xlsx`);
+    const d = new Date();
+    const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+    XLSX.writeFile(wb, `${tabLabel}_일자별재고-${ymd}.xlsx`);
   };
 
   const categories = [...new Set(tabs.map(t => t.category))];

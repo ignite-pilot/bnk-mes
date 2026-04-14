@@ -4,6 +4,7 @@
  * - 삭제는 플래그만, 목록은 deleted=N만, 등록/수정/삭제 시 수정일자·수정자 갱신
  */
 import { Router } from 'express';
+import { sendXlsx } from '../lib/excel-export.js';
 import { getPool } from '../lib/db.js';
 import logger from '../lib/logger.js';
 
@@ -41,32 +42,17 @@ router.get('/export-excel', async (req, res) => {
     );
     const safeRows = Array.isArray(rows) ? rows : [];
 
-    const BOM = '\uFEFF';
-    const header = '원자재 공급 업체,창고 이름,우편번호,주소,상세주소,수정일자,수정자\n';
-    const toCsvCell = (v) => {
-      if (v == null) return '';
-      const s = String(v);
-      return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const body = safeRows
-      .map(
-        (r) =>
-          [
-            toCsvCell(r.supplier_name),
-            toCsvCell(r.name),
-            toCsvCell(r.postal_code),
-            toCsvCell(r.address),
-            toCsvCell(r.address_detail),
-            toCsvCell(r.updated_at ? new Date(r.updated_at).toISOString().slice(0, 19).replace('T', ' ') : ''),
-            toCsvCell(r.updated_by),
-          ].join(',')
-      )
-      .join('\n');
-    const csv = BOM + header + body;
-
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="supplier_warehouses.csv"');
-    res.send(csv);
+    const headers = [['원자재 공급 업체', '창고 이름', '우편번호', '주소', '상세주소', '수정일자', '수정자']];
+    const data = safeRows.map((r) => [
+      r.supplier_name ?? '',
+      r.name ?? '',
+      r.postal_code ?? '',
+      r.address ?? '',
+      r.address_detail ?? '',
+      r.updated_at ? new Date(r.updated_at).toISOString().slice(0, 19).replace('T', ' ') : '',
+      r.updated_by ?? '',
+    ]);
+    sendXlsx(res, headers, data, '원자재업체창고');
   } catch (err) {
     logger.error('material-warehouse export error', { error: err.message, stack: err.stack });
     let message = '엑셀 다운로드에 실패했습니다.';

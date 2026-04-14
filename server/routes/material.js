@@ -3,6 +3,7 @@
  * - 원자재 종류(material_types) 연동, 목록(검색), 단건 조회, 등록, 수정, 삭제(플래그), 엑셀 다운로드
  */
 import express, { Router } from 'express';
+import { sendXlsx, buildXlsxFilename } from '../lib/excel-export.js';
 import { getPool } from '../lib/db.js';
 import logger from '../lib/logger.js';
 import { getAllCodeMaps } from '../lib/config-codes.js';
@@ -30,12 +31,40 @@ router.get('/types', async (req, res) => {
   }
 });
 
-router.get('/template', (req, res) => {
-  const BOM = '\uFEFF';
-  const header = '원자재 종류(상지/표지/하지/폼/프라이머),자재코드,원자재 이름,차종코드,차종명,적용부코드,적용부명,색상코드,색상,두께(mm),폭(mm),길이(mm),원자재 업체 안전재고 수량,비엔케이 창고 안전재고 수량\n';
-  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', 'attachment; filename="raw_materials_template.csv"');
-  res.send(BOM + header);
+router.get('/template', async (req, res) => {
+  try {
+    const XLSX = (await import('xlsx')).default;
+    const { getAllCodeMaps } = await import('../lib/config-codes.js');
+    const { vehicleMap, partMap, colorMap } = await getAllCodeMaps();
+
+    const wb = XLSX.utils.book_new();
+    const templateData = [['원자재 종류(상지/표지/하지/폼/프라이머)','자재코드','원자재 이름','차종코드','차종명','적용부코드','적용부명','색상코드','색상','두께(mm)','폭(mm)','길이(mm)','원자재 업체 안전재고 수량','비엔케이 창고 안전재고 수량']];
+    const ws1 = XLSX.utils.aoa_to_sheet(templateData);
+    ws1['!cols'] = templateData[0].map(() => ({ wch: 14 }));
+    ws1['!cols'][0] = { wch: 30 };
+    XLSX.utils.book_append_sheet(wb, ws1, '업로드양식');
+
+    const vehicleEntries = Object.entries(vehicleMap);
+    const partEntries = Object.entries(partMap);
+    const colorEntries = Object.entries(colorMap);
+    const maxLen = Math.max(vehicleEntries.length, partEntries.length, colorEntries.length);
+    const refData = [['차종코드', '차종명', '', '적용부코드', '적용부명', '', '색상코드', '색상명']];
+    for (let i = 0; i < maxLen; i++) {
+      refData.push([vehicleEntries[i]?.[0] || '', vehicleEntries[i]?.[1] || '', '', partEntries[i]?.[0] || '', partEntries[i]?.[1] || '', '', colorEntries[i]?.[0] || '', colorEntries[i]?.[1] || '']);
+    }
+    const ws2 = XLSX.utils.aoa_to_sheet(refData);
+    ws2['!cols'] = [{ wch: 18 }, { wch: 18 }, { wch: 3 }, { wch: 22 }, { wch: 22 }, { wch: 3 }, { wch: 10 }, { wch: 10 }];
+    XLSX.utils.book_append_sheet(wb, ws2, '코드참조');
+
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    const fn = encodeURIComponent(buildXlsxFilename('원자재정보_템플릿'));
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${fn}"; filename*=UTF-8''${fn}`);
+    res.send(buf);
+  } catch (err) {
+    logger.error('material template error', { error: err.message });
+    res.status(500).json({ error: '템플릿 다운로드 실패' });
+  }
 });
 
 router.post('/upload', express.text({ type: '*/*', limit: '5mb' }), async (req, res) => {
@@ -147,43 +176,10 @@ router.get('/export-excel', async (req, res) => {
       params
     );
 
-    const BOM = '\uFEFF';
-    const header = '원자재 종류,자재코드,원자재 이름,색상,색상코드,차종코드,차종명,적용부코드,적용부명,두께 (mm),폭 (mm),길이 (mm),원자재 업체 안전재고 수량,비엔케이 창고 안전재고 수량,등록일자,수정일자,등록자,수정자\n';
-    const toCsvCell = (v) => {
-      if (v == null) return '';
-      const s = String(v);
-      return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const body = (rows || [])
-      .map(
-        (r) =>
-          [
-            toCsvCell(r.kind),
-            toCsvCell(r.code),
-            toCsvCell(r.name),
-            toCsvCell(r.color),
-            toCsvCell(r.color_code),
-            toCsvCell(r.vehicle_code),
-            toCsvCell(r.vehicle_name),
-            toCsvCell(r.part_code),
-            toCsvCell(r.part_name),
-            toCsvCell(r.thickness),
-            toCsvCell(r.width),
-            toCsvCell(r.length),
-            toCsvCell(r.supplier_safety_stock),
-            toCsvCell(r.bnk_warehouse_safety_stock),
-            toCsvCell(r.created_at ? new Date(r.created_at).toISOString().slice(0, 19).replace('T', ' ') : ''),
-            toCsvCell(r.updated_at ? new Date(r.updated_at).toISOString().slice(0, 19).replace('T', ' ') : ''),
-            toCsvCell(r.created_by),
-            toCsvCell(r.updated_by),
-          ].join(',')
-      )
-      .join('\n');
-    const csv = BOM + header + body;
-
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="raw_materials.csv"');
-    res.send(csv);
+    const fmtDt = (v) => v ? new Date(v).toISOString().slice(0, 19).replace('T', ' ') : '';
+    const headers = [['원자재 종류','자재코드','원자재 이름','색상','색상코드','차종코드','차종명','적용부코드','적용부명','두께 (mm)','폭 (mm)','길이 (mm)','원자재 업체 안전재고 수량','비엔케이 창고 안전재고 수량','등록일자','수정일자','등록자','수정자']];
+    const data = (rows || []).map(r => [r.kind, r.code, r.name, r.color, r.color_code, r.vehicle_code, r.vehicle_name, r.part_code, r.part_name, r.thickness, r.width, r.length, r.supplier_safety_stock, r.bnk_warehouse_safety_stock, fmtDt(r.created_at), fmtDt(r.updated_at), r.created_by, r.updated_by]);
+    sendXlsx(res, headers, data, '원자재정보');
   } catch (err) {
     logger.error('material export error', { error: err.message });
     res.status(500).json({ error: '엑셀 다운로드에 실패했습니다.' });
