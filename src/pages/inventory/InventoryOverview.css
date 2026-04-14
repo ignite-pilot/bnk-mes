@@ -64,6 +64,48 @@
   font-weight: 600;
 }
 
+/* 헤더 — 업체 창고 */
+.th-supplier {
+  background: #ede9fe;
+  color: #5b21b6;
+  font-weight: 600;
+}
+
+/* 헤더 — BNK 공장 (부모) */
+.th-bnk {
+  background: #e0f2fe;
+  color: #075985;
+  font-weight: 700;
+}
+
+/* 헤더 — 납품처 */
+.th-aff {
+  background: #fee2e2;
+  color: #991b1b;
+  font-weight: 600;
+}
+
+/* 바디 — 업체 창고 */
+.td-supplier {
+  background: #f5f3ff;
+  text-align: right;
+}
+
+/* 바디 — 납품처 */
+.td-aff {
+  background: #fef2f2;
+  text-align: right;
+}
+
+/* 종류 셀 (rowSpan) */
+.td-kind {
+  background: #f1f5f9;
+  font-weight: 700;
+  color: #0f172a;
+  vertical-align: middle;
+  writing-mode: initial;
+}
+
 /* 바디 셀 */
 .td-info {
   background: #f8fafc;

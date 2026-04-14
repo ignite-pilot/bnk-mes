@@ -41,7 +41,6 @@ export const menuConfig = [
     label: '생산 관리',
     path: '/production',
     children: [
-      { id: 'production-factory', label: '생산 공장 정보', path: '/production/factory' },
       { id: 'production-plan-3m', label: '3개월 주문 계획 관리', path: '/production/plan-3m' },
       { id: 'production-plan-1w', label: '1주 주문 관리', path: '/production/plan-1w' },
       { id: 'production-daily', label: '일별 생산 계획/실적 관리', path: '/production/daily' },
@@ -55,9 +54,11 @@ export const menuConfig = [
     label: '재고 관리',
     path: '/inventory',
     children: [
-      { id: 'inventory-overview', label: '재고 현황', path: '/inventory/overview' },
-      { id: 'inventory-gj', label: '경주 공장 재고', path: '/inventory/gj' },
-      { id: 'inventory-us', label: '울산 공장 재고', path: '/inventory/us' },
+      { id: 'inventory-finished', label: '완제품 재고 현황', path: '/inventory/finished' },
+      { id: 'inventory-semi', label: '반제품 재고 현황', path: '/inventory/semi' },
+      { id: 'inventory-raw', label: '원자재 재고 현황', path: '/inventory/raw' },
+      { id: 'inventory-finished-stock', label: '완제품 재고 관리', path: '/inventory/finished-stock' },
+      { id: 'inventory-semi-stock', label: '반제품 재고 관리', path: '/inventory/semi-stock' },
       // { id: 'inventory-warehouse', label: '비엔케이 재고 창고 정보', path: '/inventory/warehouse' },
       { id: 'material-stock', label: '원자재 재고 관리', path: '/material/stock' },
       { id: 'delivery-stock', label: '납품사 재고 관리', path: '/delivery/stock' },

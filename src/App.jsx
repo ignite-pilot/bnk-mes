@@ -11,9 +11,11 @@ import MaterialInfo from './pages/material/MaterialInfo';
 import MaterialSupplier from './pages/material/MaterialSupplier';
 import MaterialWarehouse from './pages/material/MaterialWarehouse';
 import MaterialStock from './pages/material/MaterialStock';
-import InventoryOverview from './pages/inventory/InventoryOverview';
-import GjInventory from './pages/inventory/GjInventory';
-import UsInventory from './pages/inventory/UsInventory';
+import FinishedInventoryOverview from './pages/inventory/FinishedInventoryOverview';
+import SemiInventoryOverview from './pages/inventory/SemiInventoryOverview';
+import RawInventoryOverview from './pages/inventory/RawInventoryOverview';
+import FinishedProductStock from './pages/inventory/FinishedProductStock';
+import SemiProductStock from './pages/inventory/SemiProductStock';
 import MaterialInbound from './pages/material/MaterialInbound';
 import DeliveryFinishedProduct from './pages/delivery/DeliveryFinishedProduct';
 import DeliverySemiProduct from './pages/delivery/DeliverySemiProduct';
@@ -38,9 +40,11 @@ function App() {
       p.path !== '/material/warehouse' &&
       p.path !== '/material/stock' &&
       p.path !== '/material/inbound' &&
-      p.path !== '/inventory/overview' &&
-      p.path !== '/inventory/gj' &&
-      p.path !== '/inventory/us' &&
+      p.path !== '/inventory/finished' &&
+      p.path !== '/inventory/semi' &&
+      p.path !== '/inventory/raw' &&
+      p.path !== '/inventory/finished-stock' &&
+      p.path !== '/inventory/semi-stock' &&
       p.path !== '/delivery/vehicle' &&
       p.path !== '/delivery/product' &&
       p.path !== '/delivery/semi' &&
@@ -65,9 +69,11 @@ function App() {
           <Route path="material/supplier" element={<MaterialSupplier />} />
           <Route path="material/warehouse" element={<MaterialWarehouse />} />
           <Route path="material/stock" element={<MaterialStock />} />
-          <Route path="inventory/overview" element={<InventoryOverview />} />
-          <Route path="inventory/gj" element={<GjInventory />} />
-          <Route path="inventory/us" element={<UsInventory />} />
+          <Route path="inventory/finished" element={<FinishedInventoryOverview />} />
+          <Route path="inventory/semi" element={<SemiInventoryOverview />} />
+          <Route path="inventory/raw" element={<RawInventoryOverview />} />
+          <Route path="inventory/finished-stock" element={<FinishedProductStock />} />
+          <Route path="inventory/semi-stock" element={<SemiProductStock />} />
           <Route path="material/inbound" element={<MaterialInbound />} />
           <Route path="delivery/product" element={<DeliveryFinishedProduct />} />
           <Route path="delivery/semi" element={<DeliverySemiProduct />} />

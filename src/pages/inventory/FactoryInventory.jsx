@@ -6,6 +6,7 @@
  * 구조: 공정 탭 → [현재고 관리 | 일자별 조회] 뷰 탭
  */
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import { DynamicDataSheetGrid, textColumn, intColumn, keyColumn } from 'react-datasheet-grid';
 import 'react-datasheet-grid/dist/style.css';
 import './FactoryInventory.css';
@@ -276,23 +277,19 @@ function FactoryInventory({ factory, title }) {
     const specHeaders = ['차종', '적용부', '칼라', '두폭', '두께', '배율', '폭', '길이', '비고'];
     const dateHeaders = dates.map(dt => `${dt.slice(5, 7)}/${dt.slice(8, 10)}`);
     const headers = [...specHeaders, ...dateHeaders, '안전재고'];
-    const csvRows = [headers.join(',')];
+    const aoa = [headers];
     for (const row of gridData) {
-      const vals = [
+      aoa.push([
         row.vehicle_code, row.part_code, row.color_code,
         row.two_width, row.thickness, row.ratio, row.width, row.length, row.memo || '',
         ...dates.map(dt => row[`d_${dt}`] ?? ''),
         row._safety ?? '',
-      ];
-      csvRows.push(vals.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
+      ]);
     }
-    const bom = '\uFEFF';
-    const blob = new Blob([bom + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `${tabLabel}_일자별재고_${dateRange.start}_${dateRange.end}.csv`;
-    a.style.display = 'none'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 200);
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    XLSX.utils.book_append_sheet(wb, ws, '일자별재고');
+    XLSX.writeFile(wb, `${tabLabel}_일자별재고_${dateRange.start}_${dateRange.end}.xlsx`);
   };
 
   const categories = [...new Set(tabs.map(t => t.category))];

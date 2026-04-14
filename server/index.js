@@ -12,6 +12,8 @@ import materialSupplierRouter, { listHandler as materialSupplierList } from './r
 import materialWarehouseRouter from './routes/material-warehouse.js';
 import materialStockRouter from './routes/material-stock.js';
 import inventoryOverviewRouter from './routes/inventory-overview.js';
+import inventoryMatrixRouter from './routes/inventory-matrix.js';
+import productStockRouter from './routes/product-stock.js';
 import dailyInventoryRouter from './routes/daily-inventory.js';
 import productionTpoRouter from './routes/production-tpo.js';
 import materialInboundRouter, { exportExcel as materialInboundExportExcel, listHandler as materialInboundList } from './routes/material-inbound.js';
@@ -45,6 +47,8 @@ app.use('/api/material-suppliers', materialSupplierRouter);
 app.use('/api/material-warehouses', materialWarehouseRouter);
 app.use('/api/material-stock', materialStockRouter);
 app.use('/api/inventory-overview', inventoryOverviewRouter);
+app.use('/api/inventory-matrix', inventoryMatrixRouter);
+app.use('/api/product-stock', productStockRouter);
 app.use('/api/daily-inventory', dailyInventoryRouter);
 app.use('/api/production-tpo', productionTpoRouter);
 app.get('/api/material-inbound/export-excel', materialInboundExportExcel);
