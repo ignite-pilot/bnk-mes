@@ -5,6 +5,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import './InventoryOverview.css';
 import SelectDropdown from '../../components/SelectDropdown';
 import styles from '../material/MaterialInfo.module.css';
+import { fmtSpec } from './formatSpec';
 
 const fetchCode = (code) =>
   fetch(`/api/delivery-vehicles/codes/${code}`)
@@ -152,11 +153,11 @@ function FinishedInventoryOverview() {
                       <td className="td-info td-vehicle">{row.vehicle_code}</td>
                       <td className="td-info td-part">{row.part_code}</td>
                       <td className="td-info td-color">{row.color_code}</td>
-                      <td className="td-spec">{Number(row.two_width || 0) || ''}</td>
-                      <td className="td-spec">{Number(row.thickness || 0) || ''}</td>
-                      <td className="td-spec">{Number(row.ratio || 0) || ''}</td>
-                      <td className="td-spec">{Number(row.width || 0) || ''}</td>
-                      <td className="td-spec">{Number(row.length || 0) || ''}</td>
+                      <td className="td-spec">{fmtSpec(row.two_width)}</td>
+                      <td className="td-spec">{fmtSpec(row.thickness)}</td>
+                      <td className="td-spec">{fmtSpec(row.ratio)}</td>
+                      <td className="td-spec">{fmtSpec(row.width)}</td>
+                      <td className="td-spec">{fmtSpec(row.length)}</td>
                       <td className="td-us">{Number(row.us_qty || 0).toLocaleString()}</td>
                       {affiliates.map((a) => (
                         <td key={a.id} className="td-aff">

@@ -5,6 +5,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import './InventoryOverview.css';
 import SelectDropdown from '../../components/SelectDropdown';
 import styles from '../material/MaterialInfo.module.css';
+import { fmtSpec } from './formatSpec';
 
 const fetchCode = (code) =>
   fetch(`/api/delivery-vehicles/codes/${code}`)
@@ -140,6 +141,7 @@ function SemiInventoryOverview() {
                 <th className="th-info" rowSpan={2}>칼라</th>
                 <th className="th-spec" rowSpan={2}>두께</th>
                 <th className="th-spec" rowSpan={2}>폭</th>
+                <th className="th-spec" rowSpan={2}>배율</th>
                 <th className="th-bnk" colSpan={2}>BNK 공장</th>
                 <th className="th-safety" rowSpan={2}>안전재고</th>
               </tr>
@@ -151,7 +153,7 @@ function SemiInventoryOverview() {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
+                  <td colSpan={10} style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
                     데이터가 없습니다.
                   </td>
                 </tr>
@@ -167,8 +169,9 @@ function SemiInventoryOverview() {
                       <td className="td-info td-vehicle">{row.vehicle_code}</td>
                       <td className="td-info td-part">{row.part_code}</td>
                       <td className="td-info td-color">{row.color_code}</td>
-                      <td className="td-spec">{Number(row.thickness || 0) || ''}</td>
-                      <td className="td-spec">{Number(row.width || 0) || ''}</td>
+                      <td className="td-spec">{fmtSpec(row.thickness)}</td>
+                      <td className="td-spec">{fmtSpec(row.width)}</td>
+                      <td className="td-spec">{fmtSpec(row.ratio)}</td>
                       <td className="td-gj">{Number(row.gj_qty || 0).toLocaleString()}</td>
                       <td className="td-us">{Number(row.us_qty || 0).toLocaleString()}</td>
                       <td className={`td-safety${below ? ' below-safety' : ''}`}>

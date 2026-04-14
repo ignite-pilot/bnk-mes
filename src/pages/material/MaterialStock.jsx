@@ -10,6 +10,7 @@ import { useAuth } from '../../context/AuthContext';
 import SelectDropdown from '../../components/SelectDropdown';
 import RawMaterialSelectPopup from '../../components/RawMaterialSelectPopup';
 import styles from './MaterialInfo.module.css';
+import { fmtSpec } from '../inventory/formatSpec';
 
 const API = '/api/material-stock';
 const SUPPLIER_API = '/api/material-suppliers';
@@ -543,6 +544,8 @@ function MaterialStock() {
               <col style={{ width: '70px' }} />
               <col style={{ width: '100px' }} />
               <col style={{ width: '50px' }} />
+              <col style={{ width: '55px' }} />
+              <col style={{ width: '55px' }} />
               <col style={{ width: '80px' }} />
               <col style={{ width: '70px' }} />
               <col style={{ width: '90px' }} />
@@ -556,6 +559,8 @@ function MaterialStock() {
                 <th>차종</th>
                 <th>적용부</th>
                 <th>색상</th>
+                <th>두께</th>
+                <th>폭</th>
                 <th>재고 수량</th>
                 <th>안전재고</th>
                 <th>위험도</th>
@@ -565,7 +570,7 @@ function MaterialStock() {
             <tbody>
               {list.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className={styles.empty}>
+                  <td colSpan={12} className={styles.empty}>
                     조회된 재고가 없습니다.
                   </td>
                 </tr>
@@ -578,6 +583,8 @@ function MaterialStock() {
                     <td>{row.vehicle_code || '-'}</td>
                     <td>{row.part_code || '-'}</td>
                     <td>{row.color_code || '-'}</td>
+                    <td>{fmtSpec(row.thickness) || '-'}</td>
+                    <td>{fmtSpec(row.width) || '-'}</td>
                     <td>
                       {editingLineId === row.line_id ? (
                         <input

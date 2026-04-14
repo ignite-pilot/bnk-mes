@@ -4,6 +4,7 @@
  * - 위험도: 부족(red), 확보필요(orange), 안전(green), 일부과잉(lightbrown), 과잉위험(darkbrown)
  */
 import express, { Router } from 'express';
+import { sendXlsx } from '../lib/excel-export.js';
 import { getPool } from '../lib/db.js';
 import logger from '../lib/logger.js';
 import { optionalSqlDateRange } from '../lib/dateUtils.js';
@@ -288,6 +289,7 @@ router.get('/export-excel', async (req, res) => {
         sl.raw_material_id, sl.quantity,
         rm.name AS raw_material_name, mt.name AS raw_material_kind,
         rm.vehicle_code, rm.vehicle_name, rm.part_code, rm.part_name, rm.color_code, rm.color,
+        rm.thickness, rm.width,
         rm.supplier_safety_stock, rm.bnk_warehouse_safety_stock,
         sup.name AS supplier_name
       FROM \`${SNAPSHOTS_TABLE}\` ss
@@ -301,30 +303,20 @@ router.get('/export-excel', async (req, res) => {
     const [rows] = await getPool().query(sql, params);
     const withRisk = applyRiskToList(rows);
 
-    const BOM = '\uFEFF';
-    const header = '재고 기준일,원자재,업체 종류,재고 수량,안전재고,위험도\n';
-    const toCsvCell = (v) => {
-      if (v == null) return '';
-      const s = String(v);
-      return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const body = withRisk
-      .map((r) => {
-        const safe = r.snapshot_type === 'bnk' ? r.bnk_warehouse_safety_stock : r.supplier_safety_stock;
-        const kindName = [r.raw_material_kind, r.raw_material_name].filter(Boolean).join(' / ');
-        return [
-          toCsvCell(r.stock_date ? new Date(r.stock_date).toISOString().slice(0, 10) : ''),
-          toCsvCell(kindName || r.raw_material_name),
-          toCsvCell(r.snapshot_type === 'bnk' ? '비엔케이' : '원자재'),
-          toCsvCell(r.quantity),
-          toCsvCell(safe),
-          toCsvCell(r.risk_label),
-        ].join(',');
-      })
-      .join('\n');
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="material_stock.csv"');
-    res.send(BOM + header + body);
+    const headers = [['재고 기준일', '원자재', '업체 종류', '재고 수량', '안전재고', '위험도']];
+    const data = withRisk.map(r => {
+      const kindName = r.kind || r.raw_material_name;
+      const safe = r.snapshot_type === 'bnk' ? r.bnk_warehouse_safety_stock : r.supplier_safety_stock;
+      return [
+        r.stock_date ? new Date(r.stock_date).toISOString().slice(0, 10) : '',
+        kindName || r.raw_material_name,
+        r.snapshot_type === 'bnk' ? '비엔케이' : '원자재',
+        r.quantity,
+        safe,
+        r.risk_label,
+      ];
+    });
+    sendXlsx(res, headers, data, 'material_stock.xlsx');
   } catch (err) {
     logger.error('material-stock export error', { error: err.message });
     res.status(500).json({ error: '엑셀 다운로드에 실패했습니다.', detail: err.message });
@@ -370,6 +362,7 @@ router.get('/', async (req, res) => {
         sl.id AS line_id, sl.raw_material_id, sl.quantity,
         rm.name AS raw_material_name, mt.name AS raw_material_kind,
         rm.vehicle_code, rm.vehicle_name, rm.part_code, rm.part_name, rm.color_code, rm.color,
+        rm.thickness, rm.width,
         rm.supplier_safety_stock, rm.bnk_warehouse_safety_stock,
         sup.name AS supplier_name
       FROM \`${SNAPSHOTS_TABLE}\` ss

@@ -8,6 +8,15 @@ import './FactoryInventory.css';
 import { useAuth } from '../../context/AuthContext';
 import SelectDropdown from '../../components/SelectDropdown';
 import styles from '../material/MaterialInfo.module.css';
+import { fmtSpec } from './formatSpec';
+
+const SPEC_FIELDS = ['two_width', 'thickness', 'ratio', 'width', 'length'];
+const formatRowSpecs = (rows) =>
+  rows.map((r) => {
+    const out = { ...r };
+    for (const f of SPEC_FIELDS) if (f in out) out[f] = fmtSpec(out[f]);
+    return out;
+  });
 
 const API = '/api/product-stock';
 
@@ -51,7 +60,7 @@ function FinishedProductStock() {
       const d = await res.json().catch(() => ({}));
       if (!res.ok) { setError(d.error || '조회 실패'); return; }
       setDates(d.dates || []);
-      setRows(d.rows || []);
+      setRows(formatRowSpecs(d.rows || []));
     } catch {
       setError('조회 중 오류');
     } finally {

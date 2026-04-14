@@ -5,6 +5,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import './InventoryOverview.css';
 import SelectDropdown from '../../components/SelectDropdown';
 import styles from '../material/MaterialInfo.module.css';
+import { fmtSpec } from './formatSpec';
 
 const fetchCode = (code) =>
   fetch(`/api/delivery-vehicles/codes/${code}`)
@@ -203,8 +204,8 @@ function RawInventoryOverview() {
                       <td className="td-info td-vehicle">{row.vehicle_code}</td>
                       <td className="td-info td-part">{row.part_code}</td>
                       <td className="td-info td-color">{row.color_code}</td>
-                      <td className="td-spec">{Number(row.thickness || 0) || ''}</td>
-                      <td className="td-spec">{Number(row.width || 0) || ''}</td>
+                      <td className="td-spec">{fmtSpec(row.thickness)}</td>
+                      <td className="td-spec">{fmtSpec(row.width)}</td>
                       {warehouses.map((w) => (
                         <td key={w.id} className="td-supplier">
                           {Number(row.supplier_qty?.[w.id] || 0).toLocaleString()}
