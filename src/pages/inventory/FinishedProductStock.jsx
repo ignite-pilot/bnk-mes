@@ -9,6 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 import SelectDropdown from '../../components/SelectDropdown';
 import styles from '../material/MaterialInfo.module.css';
 import { fmtSpec } from './formatSpec';
+import { SafetyStockCellFactory, SafetyStockLegend } from './SafetyStockCell';
 
 const SPEC_FIELDS = ['two_width', 'thickness', 'ratio', 'width', 'length'];
 const formatRowSpecs = (rows) =>
@@ -136,7 +137,13 @@ function FinishedProductStock() {
     for (const dt of dates) {
       cols.push({ ...keyColumn(`d_${dt}`, intColumn), title: `${dt.slice(5, 7)}/${dt.slice(8, 10)}`, minWidth: 65 });
     }
-    cols.push({ ...keyColumn('_safety', intColumn), title: '안전재고', disabled: true, minWidth: 70 });
+    cols.push({
+      ...keyColumn('_safety', intColumn),
+      component: SafetyStockCellFactory(dates),
+      title: '안전재고',
+      disabled: true,
+      minWidth: 90,
+    });
     return cols;
   }, [dates]);
 
@@ -208,8 +215,11 @@ function FinishedProductStock() {
       </div>
 
       {error && <div className={styles.error} style={{ flexShrink: 0 }}>{error}</div>}
-      <div style={{ fontSize: '0.8125rem', color: '#64748b', marginBottom: '0.25rem', flexShrink: 0 }}>
-        총 {filtered.length}건
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.25rem', flexShrink: 0 }}>
+        <div style={{ fontSize: '0.8125rem', color: '#64748b' }}>
+          총 {filtered.length}건
+        </div>
+        <SafetyStockLegend />
       </div>
 
       <div ref={containerRef} style={{ flex: 1, minHeight: 0 }}>
