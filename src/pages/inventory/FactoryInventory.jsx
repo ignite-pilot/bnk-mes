@@ -334,7 +334,7 @@ function FactoryInventory({ factory, title }) {
           <label className={styles.searchLabel}>종료일
             <input type="date" value={dateRange.end} onChange={(e) => setDateRange(r => ({ ...r, end: e.target.value }))} className={styles.input} />
           </label>
-          <button type="button" className={styles.btnPrimary} onClick={fetchList}>조회</button>
+          <button type="button" className={styles.btnPrimary} onClick={fetchList}>검색</button>
           <button type="button" className={styles.btnSecondary} onClick={handleExcelDownload}>엑셀 다운로드</button>
         </div>
       )}
@@ -355,7 +355,7 @@ function FactoryInventory({ factory, title }) {
           <label className={styles.searchLabel}>종료일
             <input type="date" value={dateRange.end} onChange={(e) => setDateRange(r => ({ ...r, end: e.target.value }))} className={styles.input} />
           </label>
-          <button type="button" className={styles.btnPrimary} onClick={fetchBulk}>조회</button>
+          <button type="button" className={styles.btnPrimary} onClick={fetchBulk}>검색</button>
         </div>
       )}
 

@@ -1,0 +1,28 @@
+-- 프라이머 생산 실적 테이블
+CREATE TABLE IF NOT EXISTS production_primer (
+  id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  prod_date   DATE         NOT NULL,
+  `div`       VARCHAR(100) DEFAULT NULL COMMENT '구분/품명',
+  vehicle     VARCHAR(100) DEFAULT NULL COMMENT '차종',
+  thickness   DECIMAL(8,3) DEFAULT NULL COMMENT '두께',
+  ratio       DECIMAL(10,4) DEFAULT NULL COMMENT '배율',
+  width       INT          DEFAULT NULL COMMENT '폭',
+  foam_lot    VARCHAR(100) DEFAULT NULL COMMENT '폼LOT',
+  bnk_lot     VARCHAR(100) DEFAULT NULL COMMENT 'BnK LOT',
+  in_qty      INT          DEFAULT NULL COMMENT '입고수량',
+  out_qty     INT          DEFAULT NULL COMMENT '실생산량',
+  back_treat  VARCHAR(100) DEFAULT NULL COMMENT '이면처리',
+  back_treat_check VARCHAR(100) DEFAULT NULL COMMENT '이면처리검증',
+  yield_rate  DECIMAL(10,6) DEFAULT NULL COMMENT '수율',
+  yield_qty   INT          DEFAULT NULL COMMENT '수율수량',
+  memo        VARCHAR(500) DEFAULT NULL,
+  deleted     CHAR(1)      NOT NULL DEFAULT 'N',
+  created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  created_by  VARCHAR(100) DEFAULT NULL,
+  updated_by  VARCHAR(100) DEFAULT NULL,
+  PRIMARY KEY (id),
+  INDEX idx_prod_date (prod_date),
+  INDEX idx_vehicle   (vehicle),
+  INDEX idx_deleted   (deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -27,6 +27,7 @@ import MasterMaterialInfo from './pages/master/MasterMaterialInfo';
 import MasterFinishedProduct from './pages/master/MasterFinishedProduct';
 import MasterSemiProduct from './pages/master/MasterSemiProduct';
 import ProductionPlan3M from './pages/production/ProductionPlan3M';
+import ProductionDaily from './pages/production/ProductionDaily';
 import ChatPanel from './components/ChatPanel';
 import { menuConfig } from './config/menu';
 
@@ -55,7 +56,8 @@ function App() {
       p.path !== '/master/material' &&
       p.path !== '/master/finished-product' &&
       p.path !== '/master/semi-product' &&
-      p.path !== '/production/plan-3m'
+      p.path !== '/production/plan-3m' &&
+      p.path !== '/production/daily'
   );
 
   return (
@@ -85,6 +87,7 @@ function App() {
           <Route path="master/finished-product" element={<MasterFinishedProduct />} />
           <Route path="master/semi-product" element={<MasterSemiProduct />} />
           <Route path="production/plan-3m" element={<ProductionPlan3M />} />
+          <Route path="production/daily" element={<ProductionDaily />} />
           {allPaths.map(({ path, title }) => (
             <Route
               key={path}

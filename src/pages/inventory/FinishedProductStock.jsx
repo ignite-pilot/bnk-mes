@@ -40,6 +40,8 @@ function FinishedProductStock() {
   const containerRef = useRef(null);
   const saveTimerRef = useRef(null);
   const pendingRef = useRef({});
+  const fileInputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const calc = () => {
@@ -158,7 +160,51 @@ function FinishedProductStock() {
         <label className={styles.searchLabel}>칼라
           <input type="text" value={search.colorCode} onChange={(e) => setSearch((s) => ({ ...s, colorCode: e.target.value }))} className={styles.input} placeholder="검색" />
         </label>
-        <button type="button" className={styles.btnPrimary} onClick={fetchList}>조회</button>
+        <button type="button" className={styles.btnPrimary} onClick={fetchList}>검색</button>
+        <a
+          href={`${API}/finished/template`}
+          download
+          className={styles.btnSecondary}
+          style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
+        >
+          템플릿 다운로드
+        </a>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xlsx,.xls"
+          style={{ display: 'none' }}
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            setUploading(true);
+            setError('');
+            try {
+              const fd = new FormData();
+              fd.append('file', file);
+              fd.append('updatedBy', userName);
+              const res = await fetch(`${API}/finished/upload`, { method: 'POST', body: fd });
+              const d = await res.json().catch(() => ({}));
+              if (!res.ok) { setError(d.error || '업로드 실패'); return; }
+              if (d.skippedKeys?.length) console.warn('[upload skip]', d.skippedKeys);
+              alert(`업로드 완료: ${d.updated}건 저장, ${d.skipped}건 건너뜀`);
+              fetchList();
+            } catch {
+              setError('업로드 중 오류');
+            } finally {
+              setUploading(false);
+              fileInputRef.current.value = '';
+            }
+          }}
+        />
+        <button
+          type="button"
+          className={styles.btnSecondary}
+          disabled={uploading}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          {uploading ? '업로드 중...' : '엑셀 업로드'}
+        </button>
       </div>
 
       {error && <div className={styles.error} style={{ flexShrink: 0 }}>{error}</div>}

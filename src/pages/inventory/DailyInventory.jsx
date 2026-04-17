@@ -260,7 +260,7 @@ function DailyInventory() {
           종료일
           <input type="date" value={dateRange.end} onChange={(e) => setDateRange((r) => ({ ...r, end: e.target.value }))} className={styles.input} />
         </label>
-        <button type="submit" className={styles.btnPrimary}>조회</button>
+        <button type="submit" className={styles.btnPrimary}>검색</button>
         <button type="button" className={styles.btnSecondary} onClick={() => setAddOpen(true)}>
           제품 추가
         </button>

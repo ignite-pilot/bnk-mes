@@ -12,11 +12,9 @@ import logger from '../lib/logger.js';
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
+import { normVehicle } from '../lib/normalize.js';
+
 // 공통 유틸
-function normVehicle(v) {
-  if (!v) return '';
-  return String(v).trim().replace(/\r\n/g, ' ').replace(/\n/g, ' ').replace(/\s+/g, ' ');
-}
 function parseNum(v) {
   if (v == null) return null;
   const s = String(v).replace(/[,\s]/g, '').replace(/^-$/, '');

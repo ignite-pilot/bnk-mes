@@ -15,22 +15,8 @@ const router = Router();
 const TABLE = 'inventory_overview';
 
 // ── 정규화 맵 ──
-const VN = {
-  'ME1a': 'ME1A', 'CN7 PE': 'CN7PE', 'RG3 PE': 'RG3PE', 'NX4 PE': 'NX4PE',
-  'RG3 PE EV': 'RG3PE EV',
-};
-const PN = {
-  'Main': 'MAIN', 'Main FRT': 'MAIN FRT', 'Main RR': 'MAIN RR',
-  'Main/FRT': 'MAIN FRT', 'Main/RR': 'MAIN RR',
-  'A/Rest': 'A/REST', 'A/Rest FRT': 'A/REST FRT', 'A/Rest RR': 'A/REST RR',
-  'A/Rest UPR FRT': 'A/REST UPR FRT', 'A/REST/FRT': 'A/REST FRT',
-  'CTR/FRT': 'CTR FRT', 'CTR/RR': 'CTR RR',
-  'UPR/FRT': 'UPR FRT', 'UPR/RR': 'UPR RR',
-  'UPR F': 'UPR FRT', 'UPR R': 'UPR RR',
-  'UPR  FRT': 'UPR FRT', 'UPR  RR': 'UPR RR', 'UPR  4CVT': 'UPR 4CVT',
-  'H/INR': 'H/INNER',
-};
-function norm(v, m) { if (!v) return ''; const s = String(v).trim().replace(/\n/g, ' '); return m[s] || s; }
+import { normVehicle, normPart } from '../lib/normalize.js';
+function norm(v, m) { if (!v) return ''; const s = String(v).trim().replace(/\n/g, ' '); return m?.[s] || s; }
 function safeNum(v) { if (v == null) return null; const n = Number(v); return (!Number.isNaN(n) && isFinite(n)) ? n : null; }
 /** 수량용: 정수로 반올림, 부동소수점 오차(-0.x)는 0으로 처리 */
 function safeQty(v) { const n = safeNum(v); if (n == null) return 0; const r = Math.round(n); return r === -0 ? 0 : r; }
@@ -51,8 +37,8 @@ function parseOverviewSheet(wb) {
     if (!r || r.length === 0) continue;
 
     // 차종/부위는 병합셀이므로 이전 값 유지
-    if (r[0] && !JUNK.has(String(r[0]).trim())) prevVehicle = norm(r[0], VN);
-    if (r[1] && !JUNK.has(String(r[1]).trim())) prevPart = norm(r[1], PN);
+    if (r[0] && !JUNK.has(String(r[0]).trim())) prevVehicle = normVehicle(r[0]);
+    if (r[1] && !JUNK.has(String(r[1]).trim())) prevPart = normPart(r[1]);
 
     const color = r[2] ? String(r[2]).trim() : '';
     if (!color || JUNK.has(color)) continue;

@@ -12,19 +12,19 @@
 import { Router } from 'express';
 import { getPool } from '../lib/db.js';
 import logger from '../lib/logger.js';
+import { normVehicle, normPart, normColor } from '../lib/normalize.js';
 
 const router = Router();
 
-const norm = (v) => (v == null ? '' : String(v).trim().toUpperCase());
 const normNum = (v) => {
   if (v == null || v === '') return '';
   const n = Number(v);
   return isNaN(n) ? String(v).trim() : String(n);
 };
 const keyOf = (r) => [
-  norm(r.vehicle_code),
-  norm(r.part_code),
-  norm(r.color_code),
+  normVehicle(r.vehicle_code),
+  normPart(r.part_code),
+  normColor(r.color_code),
   normNum(r.thickness),
   normNum(r.width),
 ].join('|');

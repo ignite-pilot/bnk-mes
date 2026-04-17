@@ -6,6 +6,7 @@ import './InventoryOverview.css';
 import SelectDropdown from '../../components/SelectDropdown';
 import styles from '../material/MaterialInfo.module.css';
 import { fmtSpec } from './formatSpec';
+import SafetyAlertBar from './SafetyAlertBar';
 
 const fetchCode = (code) =>
   fetch(`/api/delivery-vehicles/codes/${code}`)
@@ -96,12 +97,21 @@ function FinishedInventoryOverview() {
             placeholder="검색"
           />
         </label>
+        <button type="button" className={styles.btnPrimary} onClick={fetchList}>검색</button>
         <button type="button" className={styles.btnSecondary} onClick={() => setSearch({ vehicleCode: '', partCode: '', colorCode: '' })}>
           초기화
         </button>
       </form>
 
       {error && <div className={styles.error} style={{ flexShrink: 0 }}>{error}</div>}
+      <SafetyAlertBar
+        rows={filtered}
+        getTotal={(row) =>
+          Number(row.us_qty || 0) +
+          Object.values(row.affiliate_qty || {}).reduce((a, b) => a + (Number(b) || 0), 0)
+        }
+        getLabel={(row) => [row.vehicle_code, row.part_code, row.color_code].filter(Boolean).join(' / ')}
+      />
       <div style={{ fontSize: '0.8125rem', color: '#64748b', marginBottom: '0.25rem', flexShrink: 0 }}>
         총 {filtered.length}건
       </div>
