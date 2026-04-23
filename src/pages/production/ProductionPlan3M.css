@@ -113,6 +113,4 @@
   color: #1e293b;
 }
 
-.tpo-table tbody tr:hover td {
-  background: #e0e7ff !important;
-}
+/* row hover 배경 제거 (수정 셀 색상 가시성 확보) */

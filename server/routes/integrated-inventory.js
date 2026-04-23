@@ -83,12 +83,111 @@ router.get('/', async (req, res) => {
        ORDER BY row_order ASC, id ASC`,
       [date],
     );
-    const meta = rows.length > 0
-      ? { upload_batch: rows[0].upload_batch, uploaded_at: rows[0].uploaded_at, uploaded_by: rows[0].uploaded_by }
+    // 마스터 완제품에서 (차종 + 부위 + 칼라 + 규격 5필드) 조합이 등록되어 있는지 확인
+    // 매칭 기준:
+    //   - 텍스트(차종/부위/칼라): integrated 값이 master의 code 또는 name 어느 쪽과 일치하면 OK
+    //   - 규격(두폭/두께/배율/폭/길이): 숫자 비교, null/빈값은 양쪽 모두 null 이어야 매칭
+    const [masterRows] = await pool.query(
+      `SELECT vehicle_code, vehicle_name, part_code, part_name, color_code, color_name,
+              two_width, thickness, ratio, width, \`length\`
+       FROM master_finished_products WHERE deleted = 'N'`,
+    );
+    const normStr = (s) => String(s == null ? '' : s).trim().toUpperCase().replace(/\s+/g, '');
+    const normNum = (v) => {
+      if (v == null || v === '') return '';
+      const n = Number(v);
+      return Number.isFinite(n) ? String(n) : '';
+    };
+    const specKey = (r) => `${normNum(r.two_width)}/${normNum(r.thickness)}/${normNum(r.ratio)}/${normNum(r.width)}/${normNum(r.length)}`;
+    const masterKeySet = new Set();
+    for (const m of masterRows) {
+      const vs = new Set([normStr(m.vehicle_code), normStr(m.vehicle_name)].filter(Boolean));
+      const ps = new Set([normStr(m.part_code), normStr(m.part_name)].filter(Boolean));
+      const cs = new Set([normStr(m.color_code), normStr(m.color_name)].filter(Boolean));
+      const sk = specKey(m);
+      for (const v of vs) for (const p of ps) for (const c of cs) {
+        masterKeySet.add(`${v}|${p}|${c}|${sk}`);
+      }
+    }
+    const list = rows.map((r) => {
+      const v = normStr(r.vehicle), p = normStr(r.part), c = normStr(r.color);
+      const key = `${v}|${p}|${c}|${specKey(r)}`;
+      const hasTriple = v && p && c;
+      return { ...r, is_registered: hasTriple ? masterKeySet.has(key) : false };
+    });
+    const meta = list.length > 0
+      ? { upload_batch: list[0].upload_batch, uploaded_at: list[0].uploaded_at, uploaded_by: list[0].uploaded_by }
       : null;
-    res.json({ list: rows, total: rows.length, meta, snapshot_date: date });
+    res.json({ list, total: list.length, meta, snapshot_date: date });
   } catch (err) {
     logger.error('integrated-inventory list error', { error: err.message });
+    res.status(500).json({ error: '조회 실패: ' + err.message });
+  }
+});
+
+// ── 특정 행의 마스터 불일치 상세 ──
+router.get('/mismatch/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'invalid id' });
+    const pool = getPool();
+    const [[row]] = await pool.query(
+      `SELECT id, vehicle, part, color, product_code,
+              two_width, thickness, ratio, width, \`length\`
+       FROM integrated_inventory WHERE id = ?`,
+      [id],
+    );
+    if (!row) return res.status(404).json({ error: 'not found' });
+
+    const normStr = (s) => String(s == null ? '' : s).trim().toUpperCase().replace(/\s+/g, '');
+    const normNum = (v) => {
+      if (v == null || v === '') return null;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+    const numEq = (a, b) => {
+      const na = normNum(a), nb = normNum(b);
+      if (na == null && nb == null) return true;
+      if (na == null || nb == null) return false;
+      return Math.abs(na - nb) < 1e-6;
+    };
+    const strAny = (a, bVals) => {
+      const na = normStr(a);
+      if (!na) return false;
+      return bVals.some((b) => normStr(b) === na);
+    };
+
+    // 차종만이라도 매칭되는 마스터 후보
+    const [candidates] = await pool.query(
+      `SELECT id, code, vehicle_code, vehicle_name, part_code, part_name,
+              color_code, color_name, two_width, thickness, ratio, width, \`length\`
+       FROM master_finished_products
+       WHERE deleted = 'N' AND (vehicle_code = ? OR vehicle_name = ?)`,
+      [row.vehicle, row.vehicle],
+    );
+
+    // 각 후보별 필드 매칭 여부
+    const scored = candidates.map((m) => {
+      const checks = {
+        vehicle: strAny(row.vehicle, [m.vehicle_code, m.vehicle_name]),
+        part:    strAny(row.part,    [m.part_code, m.part_name]),
+        color:   strAny(row.color,   [m.color_code, m.color_name]),
+        two_width: numEq(row.two_width, m.two_width),
+        thickness: numEq(row.thickness, m.thickness),
+        ratio:     numEq(row.ratio, m.ratio),
+        width:     numEq(row.width, m.width),
+        length:    numEq(row.length, m.length),
+      };
+      const score = Object.values(checks).filter(Boolean).length;
+      return { master: m, checks, score };
+    }).sort((a, b) => b.score - a.score).slice(0, 10);
+
+    // 전체 행에서 일치하는 후보가 있는지
+    const fullyMatched = scored.find((s) => Object.values(s.checks).every(Boolean));
+
+    res.json({ row, candidates: scored, fullyMatched: !!fullyMatched });
+  } catch (err) {
+    logger.error('integrated-inventory mismatch error', { error: err.message });
     res.status(500).json({ error: '조회 실패: ' + err.message });
   }
 });

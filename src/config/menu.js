@@ -41,10 +41,9 @@ export const menuConfig = [
     label: '생산 관리',
     path: '/production',
     children: [
-      { id: 'production-plan-3m', label: '3개월 주문 계획 관리', path: '/production/plan-3m' },
-      { id: 'production-tpo-detail', label: '월별 TPO 상세', path: '/production/tpo-detail' },
-      { id: 'production-plan-1w', label: '1주 주문 관리', path: '/production/plan-1w' },
-      { id: 'production-daily', label: '일별 생산 계획/실적 관리', path: '/production/daily' },
+      { id: 'production-plan-3m', label: '코오롱 주문 계획 관리', path: '/production/plan-3m' },
+      { id: 'production-tpo-detail', label: '주문 출고 현황', path: '/production/tpo-detail' },
+      { id: 'production-daily', label: '일별 생산 실적 관리', path: '/production/daily' },
       // { id: 'production-process', label: '공정별 생산 계획/실적 관리', path: '/production/process' },
       // { id: 'production-material', label: '원자재 사용 관리', path: '/production/material' },
       // { id: 'production-quality', label: '품질 관리', path: '/production/quality' },

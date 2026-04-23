@@ -95,8 +95,9 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
     const pool = getPool();
 
-    // 기존 데이터 삭제 (같은 월)
+    // 기존 데이터 삭제 (같은 월) — 변경 이력도 함께 초기화
     await pool.query('DELETE FROM production_tpo_plan WHERE plan_month = ?', [planMonth]);
+    await pool.query('DELETE FROM production_tpo_plan_daily_history WHERE plan_month = ?', [planMonth]);
 
     // 파싱 및 저장
     let pVehicle = '', pSupplier = '';
@@ -148,9 +149,11 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         if (qty != null) dailyValues.push([headerId, date, qty]);
       }
       if (dailyValues.length > 0) {
+        // original_qty 는 엑셀 원본 수량 — request_qty 와 동일하게 초기화
+        const withOrig = dailyValues.map(([hid, date, qty]) => [hid, date, qty, qty]);
         await pool.query(
-          'INSERT INTO production_tpo_plan_daily (header_id, plan_date, request_qty) VALUES ?',
-          [dailyValues]
+          'INSERT INTO production_tpo_plan_daily (header_id, plan_date, request_qty, original_qty) VALUES ?',
+          [withOrig]
         );
         savedDaily += dailyValues.length;
       }
@@ -196,7 +199,9 @@ router.get('/', async (req, res) => {
 
     const headerIds = headers.map(h => h.id);
     const [daily] = await pool.query(
-      `SELECT header_id, DATE_FORMAT(plan_date, '%Y-%m-%d') AS plan_date, request_qty
+      `SELECT id, header_id, DATE_FORMAT(plan_date, '%Y-%m-%d') AS plan_date,
+              request_qty, original_qty, memo,
+              DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at, updated_by
        FROM production_tpo_plan_daily WHERE header_id IN (?)`,
       [headerIds]
     );
@@ -205,7 +210,18 @@ router.get('/', async (req, res) => {
     const dateSet = new Set();
     for (const d of daily) {
       if (!dailyMap[d.header_id]) dailyMap[d.header_id] = {};
-      dailyMap[d.header_id][d.plan_date] = d.request_qty;
+      const nq = d.request_qty == null ? null : Number(d.request_qty);
+      const oq = d.original_qty == null ? null : Number(d.original_qty);
+      const isModified = d.memo || (oq == null ? nq != null : nq !== oq);
+      dailyMap[d.header_id][d.plan_date] = {
+        id: d.id,
+        qty: nq,
+        original: oq,
+        memo: d.memo,
+        modified: !!isModified,
+        updated_at: d.updated_at,
+        updated_by: d.updated_by,
+      };
       dateSet.add(d.plan_date);
     }
     const dates = [...dateSet].sort();
@@ -222,12 +238,119 @@ router.get('/', async (req, res) => {
   }
 });
 
+// ── 일자별 요청 수량 편집 (upsert + history) ──
+router.put('/daily', async (req, res) => {
+  try {
+    const { headerId, planDate, requestQty, memo, updatedBy } = req.body || {};
+    const hid = Number(headerId);
+    if (!Number.isFinite(hid) || !planDate) return res.status(400).json({ error: 'headerId, planDate 필수' });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(planDate))) return res.status(400).json({ error: 'planDate 형식 오류' });
+    const q = (requestQty === '' || requestQty == null) ? null : Number(requestQty);
+    if (q != null && !Number.isFinite(q)) return res.status(400).json({ error: 'requestQty 숫자 아님' });
+    const mm = memo == null ? null : String(memo).slice(0, 500);
+
+    const pool = getPool();
+    const [[header]] = await pool.query(
+      'SELECT id, plan_month FROM production_tpo_plan WHERE id = ?', [hid],
+    );
+    if (!header) return res.status(404).json({ error: 'header not found' });
+
+    const [[existing]] = await pool.query(
+      `SELECT id, request_qty, original_qty, memo
+       FROM production_tpo_plan_daily WHERE header_id = ? AND plan_date = ?`,
+      [hid, planDate],
+    );
+
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      const uploader = String(updatedBy || '').trim() || null;
+      const now = new Date();
+
+      let dailyId, prevQty, prevMemo, action;
+      if (existing) {
+        prevQty = existing.request_qty == null ? null : Number(existing.request_qty);
+        prevMemo = existing.memo;
+        await conn.query(
+          `UPDATE production_tpo_plan_daily
+           SET request_qty = ?, memo = ?, updated_at = ?, updated_by = ?
+           WHERE id = ?`,
+          [q, mm, now, uploader, existing.id],
+        );
+        dailyId = existing.id;
+        action = 'update';
+      } else {
+        // 신규: original_qty = NULL 로 기록 → 엑셀에 없던 값
+        const [ins] = await conn.query(
+          `INSERT INTO production_tpo_plan_daily
+           (header_id, plan_date, request_qty, original_qty, memo, updated_at, updated_by)
+           VALUES (?, ?, ?, NULL, ?, ?, ?)`,
+          [hid, planDate, q, mm, now, uploader],
+        );
+        dailyId = ins.insertId;
+        prevQty = null; prevMemo = null;
+        action = 'create';
+      }
+
+      // 변경 이력 기록 (값 또는 메모 중 하나라도 변경된 경우에만)
+      const qtyChanged = prevQty !== q;
+      const memoChanged = (prevMemo || null) !== (mm || null);
+      if (qtyChanged || memoChanged) {
+        await conn.query(
+          `INSERT INTO production_tpo_plan_daily_history
+           (daily_id, header_id, plan_month, plan_date, prev_qty, new_qty, prev_memo, new_memo, action, changed_by)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [dailyId, hid, header.plan_month, planDate, prevQty, q, prevMemo, mm, action, uploader],
+        );
+      }
+
+      await conn.commit();
+      res.json({ ok: true, dailyId, action });
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
+  } catch (err) {
+    logger.error('tpo daily update error', { error: err.message, stack: err.stack });
+    res.status(500).json({ error: '저장 실패: ' + err.message });
+  }
+});
+
+// ── 변경 이력 조회 (월별) ──
+router.get('/history', async (req, res) => {
+  try {
+    const { planMonth } = req.query;
+    if (!planMonth) return res.status(400).json({ error: 'planMonth 필요' });
+    const pool = getPool();
+    const [rows] = await pool.query(
+      `SELECT h.id, h.daily_id, h.header_id,
+              DATE_FORMAT(h.plan_date, '%Y-%m-%d') AS plan_date,
+              h.prev_qty, h.new_qty, h.prev_memo, h.new_memo, h.action,
+              h.changed_by,
+              DATE_FORMAT(h.changed_at, '%Y-%m-%d %H:%i:%s') AS changed_at,
+              p.vehicle, p.supplier, p.product_num, p.material_code
+       FROM production_tpo_plan_daily_history h
+       LEFT JOIN production_tpo_plan p ON p.id = h.header_id
+       WHERE h.plan_month = ?
+       ORDER BY h.changed_at DESC, h.id DESC`,
+      [planMonth],
+    );
+    res.json({ list: rows });
+  } catch (err) {
+    logger.error('tpo history error', { error: err.message });
+    res.status(500).json({ error: '이력 조회 실패: ' + err.message });
+  }
+});
+
 // ── 월별 삭제 ──
 router.delete('/:planMonth', async (req, res) => {
   try {
     const { planMonth } = req.params;
     const pool = getPool();
     const [result] = await pool.query('DELETE FROM production_tpo_plan WHERE plan_month = ?', [planMonth]);
+    await pool.query('DELETE FROM production_tpo_plan_daily_history WHERE plan_month = ?', [planMonth]);
     res.json({ ok: true, deleted: result.affectedRows });
   } catch (err) {
     logger.error('tpo delete error', { error: err.message });

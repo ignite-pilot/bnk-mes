@@ -5,6 +5,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styles from '../../material/MaterialInfo.module.css';
 import SelectDropdown from '../../../components/SelectDropdown';
 import { useConfigCodes } from './useConfigCodes';
+import useGrabScroll from '../../../hooks/useGrabScroll';
 
 const API = '/api/production-primer';
 const EMPTY_ROW = {
@@ -36,6 +37,7 @@ function monthAgoISO() {
 }
 
 function PrimerTab({ userName }) {
+  const grab = useGrabScroll();
   const [startDate, setStartDate] = useState(monthAgoISO());
   const [endDate, setEndDate] = useState(todayISO());
   const [list, setList] = useState([]);
@@ -129,7 +131,7 @@ function PrimerTab({ userName }) {
   const filtered = onlyMismatch ? list.filter((r) => !r.vehicleMatched) : list;
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       {/* 검색/필터 */}
       <div className={styles.searchForm}>
         <label className={styles.searchLabel}>
@@ -189,9 +191,9 @@ function PrimerTab({ userName }) {
       )}
 
       {/* 데이터 테이블 */}
-      <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem', minWidth: 1500 }}>
-          <thead>
+      <div ref={grab.ref} {...grab.props} style={{ overflow: 'auto', border: '1px solid #e2e8f0', borderRadius: '6px', cursor: 'grab', flex: 1, minHeight: 0 }}>
+        <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '0.82rem', minWidth: 1500 }}>
+          <thead style={{ position: 'sticky', top: 0, zIndex: 3 }}>
             <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
               <Th>생산일자</Th>
               <Th>구분/품명</Th>

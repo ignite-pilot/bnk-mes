@@ -26,10 +26,19 @@ function ProductionDaily() {
   const userName = user?.name || user?.loginId || '';
 
   return (
-    <div className={styles.page}>
-      <h2 className={styles.title}>일별 생산 계획/실적 관리</h2>
+    <div className={styles.page} style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 160px)', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap', flexShrink: 0 }}>
+        <h2 className={styles.title} style={{ margin: 0 }}>일별 생산 실적 관리</h2>
+        <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
+          ※{' '}
+          <code style={{ background: '#f1f5f9', padding: '1px 5px', borderRadius: 3 }}>1. 표면처리 생산일지.xlsx</code>,{' '}
+          <code style={{ background: '#f1f5f9', padding: '1px 5px', borderRadius: 3 }}>2. 프라이머 생산일지.xlsx</code>,{' '}
+          <code style={{ background: '#f1f5f9', padding: '1px 5px', borderRadius: 3 }}>엠보_생산일지(2026년~).xlsx</code>,{' '}
+          <code style={{ background: '#f1f5f9', padding: '1px 5px', borderRadius: 3 }}>재단일지(2026년 1월~).xlsx</code> 참고
+        </span>
+      </div>
 
-      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #e2e8f0', marginBottom: '1rem' }}>
+      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #e2e8f0', marginBottom: '1rem', flexShrink: 0 }}>
         {TABS.map((t) => {
           const isActive = activeTab === t.key;
           return (
@@ -57,10 +66,12 @@ function ProductionDaily() {
         })}
       </div>
 
-      {activeTab === 'surface' && <SurfaceTreatmentTab userName={userName} />}
-      {activeTab === 'primer' && <PrimerTab userName={userName} />}
-      {activeTab === 'emboss' && <EmbossTab userName={userName} />}
-      {activeTab === 'cutting' && <CuttingTab userName={userName} />}
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        {activeTab === 'surface' && <SurfaceTreatmentTab userName={userName} />}
+        {activeTab === 'primer' && <PrimerTab userName={userName} />}
+        {activeTab === 'emboss' && <EmbossTab userName={userName} />}
+        {activeTab === 'cutting' && <CuttingTab userName={userName} />}
+      </div>
     </div>
   );
 }

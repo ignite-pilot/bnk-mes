@@ -209,8 +209,11 @@ function TpoDetail() {
   const perfWeekList = data.perfWeekList || [];
 
   return (
-    <div className={styles.page}>
-      <h1 className={styles.title}>월별 TPO 상세</h1>
+    <div className={styles.page} style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 160px)', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
+        <h1 className={styles.title} style={{ margin: 0 }}>주문 출고 현황</h1>
+        <span style={{ fontSize: '0.78rem', color: '#64748b' }}>※ <code style={{ background: '#f1f5f9', padding: '1px 5px', borderRadius: 3 }}>26년3월 TPO 요청수량(경주물류창고)~.xlsx</code> 참고</span>
+      </div>
 
       <div className={styles.searchForm} style={{ gap: '0.5rem 0.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
         <label className={styles.searchLabel} style={{ minWidth: 180 }}>
@@ -264,7 +267,7 @@ function TpoDetail() {
         onMouseMove={handleMouseMove}
         onMouseUp={endDrag}
         onMouseLeave={endDrag}
-        style={{ overflow: 'auto', border: '1px solid #e2e8f0', borderRadius: '6px', cursor: 'grab', maxHeight: 'calc(100vh - 260px)' }}
+        style={{ overflow: 'auto', border: '1px solid #e2e8f0', borderRadius: '6px', cursor: 'grab', flex: 1, minHeight: 0 }}
       >
         <table style={{ borderCollapse: 'separate', borderSpacing: 0, fontSize: '0.75rem' }}>
           <thead style={{ position: 'sticky', top: 0, zIndex: 3 }}>
