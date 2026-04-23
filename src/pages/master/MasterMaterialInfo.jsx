@@ -50,8 +50,9 @@ function MasterMaterialInfo() {
   const [limit, setLimit] = useState(20);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [search, setSearch] = useState({ kindId: '', name: '', vehicleCode: '' });
-  const [appliedSearch, setAppliedSearch] = useState({ kindId: '', name: '', vehicleCode: '' });
+  const [activeTabId, setActiveTabId] = useState('');
+  const [search, setSearch] = useState({ name: '', vehicleCode: '' });
+  const [appliedSearch, setAppliedSearch] = useState({ name: '', vehicleCode: '' });
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState('add');
   const [formData, setFormData] = useState(null);
@@ -79,7 +80,7 @@ function MasterMaterialInfo() {
     const timeoutId = setTimeout(() => ac.abort(), LIST_FETCH_TIMEOUT_MS);
     try {
       const q = new URLSearchParams({ page: String(page), limit: String(limit) });
-      if (appliedSearch.kindId) q.set('kindId', String(appliedSearch.kindId));
+      if (activeTabId) q.set('kindId', String(activeTabId));
       if (appliedSearch.name.trim()) q.set('name', appliedSearch.name.trim());
       if (appliedSearch.vehicleCode) q.set('vehicleCode', appliedSearch.vehicleCode);
       const res = await fetch(`${API}?${q}`, { signal: ac.signal });
@@ -101,12 +102,17 @@ function MasterMaterialInfo() {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, appliedSearch]);
+  }, [page, limit, appliedSearch, activeTabId]);
 
   useEffect(() => {
     fetch(`${API}/types`)
       .then((r) => r.json())
-      .then((d) => setTypes(d.list || []))
+      .then((d) => {
+        // '하지'/'접착제' 등은 원자재가 아니므로 제외 (하지 → 반제품)
+        const filtered = (d.list || []).filter((t) => !['하지', '접착제', '표지'].includes(t.name));
+        setTypes(filtered);
+        if (filtered.length > 0) setActiveTabId(filtered[0].id);
+      })
       .catch(() => setTypes([]));
   }, []);
 
@@ -119,10 +125,11 @@ function MasterMaterialInfo() {
   }, [formOpen, formMode, types]);
 
   const handleSearch = (e) => { e.preventDefault(); setAppliedSearch({ ...search }); setPage(1); };
-  const handleResetSearch = () => { const empty = { kindId: '', name: '', vehicleCode: '' }; setSearch(empty); setAppliedSearch(empty); setPage(1); };
+  const handleResetSearch = () => { const empty = { name: '', vehicleCode: '' }; setSearch(empty); setAppliedSearch(empty); setPage(1); };
+  const handleChangeTab = (id) => { setActiveTabId(id); setPage(1); };
 
   const emptyForm = () => ({
-    kind_id: types.length ? types[0].id : '',
+    kind_id: activeTabId || (types.length ? types[0].id : ''),
     code: '',
     name: '',
     color: '',
@@ -259,7 +266,7 @@ function MasterMaterialInfo() {
 
   const handleExcelDownload = async () => {
     const q = new URLSearchParams();
-    if (appliedSearch.kindId) q.set('kindId', String(appliedSearch.kindId));
+    if (activeTabId) q.set('kindId', String(activeTabId));
     if (appliedSearch.name.trim()) q.set('name', appliedSearch.name.trim());
     if (appliedSearch.vehicleCode) q.set('vehicleCode', appliedSearch.vehicleCode);
     setError('');
@@ -469,17 +476,34 @@ function MasterMaterialInfo() {
     <div className={styles.page}>
       <h1 className={styles.title}>원자재 정보</h1>
 
+      {/* 원자재 종류 탭 */}
+      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #e2e8f0', marginBottom: '1rem' }}>
+        {types.map((t) => {
+          const isActive = activeTabId === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => handleChangeTab(t.id)}
+              style={{
+                padding: '0.6rem 1.5rem',
+                border: 'none',
+                borderBottom: isActive ? '2px solid #2563eb' : '2px solid transparent',
+                backgroundColor: 'transparent',
+                color: isActive ? '#2563eb' : '#475569',
+                fontWeight: isActive ? 700 : 500,
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+                marginBottom: '-1px',
+              }}
+            >
+              {t.name}
+            </button>
+          );
+        })}
+      </div>
+
       <form onSubmit={handleSearch} className={styles.searchForm}>
-        <label className={styles.searchLabel}>
-          원자재 종류
-          <SelectDropdown
-            options={types.map((t) => ({ value: String(t.id), label: t.name }))}
-            value={String(search.kindId ?? '')}
-            onChange={(val) => setSearch((s) => ({ ...s, kindId: val }))}
-            placeholder="전체"
-            style={{ minWidth: 100 }}
-          />
-        </label>
         <label className={styles.searchLabel}>
           원자재 이름
           <input type="text" value={search.name} onChange={(e) => setSearch((s) => ({ ...s, name: e.target.value }))} className={styles.input} placeholder="검색" />
@@ -542,26 +566,24 @@ function MasterMaterialInfo() {
         <div className={styles.tableWrap}>
           <table className={styles.masterTable}>
             <colgroup>
-              <col style={{ width: '7%' }} />   {/* 원자재 종류 */}
-              <col style={{ width: '9%' }} />   {/* 자재코드 */}
-              <col style={{ width: '18%' }} />  {/* 원자재 이름 */}
+              <col style={{ width: '10%' }} />  {/* 자재코드 */}
+              <col style={{ width: '20%' }} />  {/* 원자재 이름 */}
               {!isMobile && (
                 <>
-                  <col style={{ width: '6%' }} />   {/* 차종 */}
-                  <col style={{ width: '10%' }} />  {/* 적용부 */}
-                  <col style={{ width: '8%' }} />   {/* 색상 */}
+                  <col style={{ width: '7%' }} />   {/* 차종 */}
+                  <col style={{ width: '11%' }} />  {/* 적용부 */}
+                  <col style={{ width: '9%' }} />   {/* 색상 */}
                   <col style={{ width: '5%' }} />   {/* 두께 */}
                   <col style={{ width: '5%' }} />   {/* 폭 */}
                   <col style={{ width: '5%' }} />   {/* 길이 */}
-                  <col style={{ width: '5%' }} />   {/* 업체안전재고 */}
-                  <col style={{ width: '5%' }} />   {/* BNK안전재고 */}
+                  <col style={{ width: '6%' }} />   {/* 업체안전재고 */}
+                  <col style={{ width: '6%' }} />   {/* BNK안전재고 */}
                 </>
               )}
               <col style={{ width: '10%' }} />  {/* 기능 */}
             </colgroup>
             <thead>
               <tr>
-                <th>원자재 종류</th>
                 <th>자재코드</th>
                 <th>원자재 이름</th>
                 {!isMobile && (
@@ -581,11 +603,10 @@ function MasterMaterialInfo() {
             </thead>
             <tbody>
               {list.length === 0 ? (
-                <tr><td colSpan={isMobile ? 4 : 13} className={styles.empty}>조회된 원자재가 없습니다.</td></tr>
+                <tr><td colSpan={isMobile ? 3 : 12} className={styles.empty}>조회된 원자재가 없습니다.</td></tr>
               ) : (
                 list.map((row) => (
                   <tr key={row.id} onClick={() => openView(row.id)} style={{ cursor: 'pointer' }}>
-                    <EllipsisCell>{renderCell(row.kind)}</EllipsisCell>
                     <EllipsisCell>{renderCell(row.code)}</EllipsisCell>
                     <EllipsisCell>{renderCell(row.name)}</EllipsisCell>
                     {!isMobile && (

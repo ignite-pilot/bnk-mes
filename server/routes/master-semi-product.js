@@ -8,7 +8,7 @@ import { parseCsv } from '../lib/csv-parse.js';
 const router = Router();
 const TABLE = 'master_semi_products';
 
-const SEMI_TYPES = ['상지', '표지', '하지', '폼', '프라이머'];
+const SEMI_TYPES = ['표지', '하지', '폼 프라이머'];
 
 const LIST_SELECT = `SELECT id, semi_type, vehicle_code, vehicle_name, part_code, part_name,
   color_code, color_name, supplier, thickness, width, ratio, safety_stock, production_time,
@@ -46,7 +46,7 @@ export const templateDownload = async (req, res) => {
     const wb = XLSX.utils.book_new();
 
     // 시트1: 업로드 양식
-    const templateData = [['반제품종류(상지/표지/하지/폼/프라이머)', '업체', '차종코드', '차종명', '적용부코드', '적용부명', '색상코드', '색상명', '두께', '폭', '배율', '생산시간(분)']];
+    const templateData = [['반제품종류(표지/하지/폼 프라이머)', '업체', '차종코드', '차종명', '적용부코드', '적용부명', '색상코드', '색상명', '두께', '폭', '배율', '생산시간(분)']];
     const ws1 = XLSX.utils.aoa_to_sheet(templateData);
     ws1['!cols'] = templateData[0].map(() => ({ wch: 14 }));
     ws1['!cols'][0] = { wch: 30 };

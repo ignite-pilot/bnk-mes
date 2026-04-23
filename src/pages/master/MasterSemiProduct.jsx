@@ -15,7 +15,7 @@ const fetchCode = (code) =>
     .then((d) => (d.items || d.list || []).map((c) => ({ value: c.codeValue || c.value || c.code, label: c.label || c.codeName || c.name || c.codeValue, name: c.name || c.codeName || c.label || '' })))
     .catch(() => []);
 
-const SEMI_TYPES = ['상지', '표지', '하지', '폼', '프라이머'];
+const SEMI_TYPES = ['표지', '하지', '폼 프라이머'];
 const PAGE_SIZES = [10, 15, 20, 50, 100];
 
 function MasterSemiProduct() {
@@ -27,7 +27,8 @@ function MasterSemiProduct() {
   const [limit, setLimit] = useState(20);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [search, setSearch] = useState({ semiType: '', vehicleCode: '', partCode: '', colorCode: '' });
+  const [activeTab, setActiveTab] = useState(SEMI_TYPES[0]);
+  const [search, setSearch] = useState({ vehicleCode: '', partCode: '', colorCode: '' });
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState('add');
   const [formData, setFormData] = useState(null);
@@ -50,7 +51,7 @@ function MasterSemiProduct() {
     setLoading(true); setError('');
     try {
       const q = new URLSearchParams({ page: String(page), limit: String(limit) });
-      if (search.semiType) q.set('semiType', search.semiType);
+      if (activeTab) q.set('semiType', activeTab);
       if (search.vehicleCode) q.set('vehicleCode', search.vehicleCode);
       if (search.partCode) q.set('partCode', search.partCode);
       if (search.colorCode) q.set('colorCode', search.colorCode);
@@ -59,14 +60,15 @@ function MasterSemiProduct() {
       if (!res.ok) { setError(data.error || '조회 실패'); return; }
       setList(data.list || []); setTotal(data.total ?? 0);
     } catch { setError('조회 중 오류'); } finally { setLoading(false); }
-  }, [page, limit, search]);
+  }, [page, limit, activeTab, search]);
 
   useEffect(() => { fetchList(); }, [fetchList]);
 
   const handleSearch = (e) => { e.preventDefault(); setPage(1); fetchList(); };
-  const handleResetSearch = () => { setSearch({ semiType: '', vehicleCode: '', partCode: '', colorCode: '' }); setPage(1); };
+  const handleResetSearch = () => { setSearch({ vehicleCode: '', partCode: '', colorCode: '' }); setPage(1); };
+  const handleChangeTab = (tab) => { setActiveTab(tab); setPage(1); };
 
-  const emptyForm = () => ({ semi_type: '', vehicle_code: '', vehicle_name: '', part_code: '', part_name: '', color_code: '', color_name: '', supplier: '', thickness: '', width: '', ratio: '', safety_stock: '', production_time: '' });
+  const emptyForm = () => ({ semi_type: activeTab, vehicle_code: '', vehicle_name: '', part_code: '', part_name: '', color_code: '', color_name: '', supplier: '', thickness: '', width: '', ratio: '', safety_stock: '', production_time: '' });
 
   const openAdd = () => { setFormMode('add'); setFormData(emptyForm()); setFormError(''); setFormOpen(true); };
   const openView = async (id) => {
@@ -128,7 +130,7 @@ function MasterSemiProduct() {
 
   const handleExcelDownload = async () => {
     const q = new URLSearchParams();
-    if (search.semiType) q.set('semiType', search.semiType);
+    if (activeTab) q.set('semiType', activeTab);
     if (search.vehicleCode) q.set('vehicleCode', search.vehicleCode);
     if (search.partCode) q.set('partCode', search.partCode);
     if (search.colorCode) q.set('colorCode', search.colorCode);
@@ -175,11 +177,34 @@ function MasterSemiProduct() {
     <div className={styles.page}>
       <h1 className={styles.title}>반제품 정보</h1>
 
+      {/* 반제품 종류 탭 */}
+      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #e2e8f0', marginBottom: '1rem' }}>
+        {SEMI_TYPES.map((t) => {
+          const isActive = activeTab === t;
+          return (
+            <button
+              key={t}
+              type="button"
+              onClick={() => handleChangeTab(t)}
+              style={{
+                padding: '0.6rem 1.5rem',
+                border: 'none',
+                borderBottom: isActive ? '2px solid #2563eb' : '2px solid transparent',
+                backgroundColor: 'transparent',
+                color: isActive ? '#2563eb' : '#475569',
+                fontWeight: isActive ? 700 : 500,
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+                marginBottom: '-1px',
+              }}
+            >
+              {t}
+            </button>
+          );
+        })}
+      </div>
+
       <form onSubmit={handleSearch} className={styles.searchForm}>
-        <label className={styles.searchLabel}>
-          종류
-          <SelectDropdown options={SEMI_TYPES.map(t => ({ value: t, label: t }))} value={search.semiType} onChange={(v) => setSearch(s => ({ ...s, semiType: v }))} placeholder="전체" style={{ minWidth: 100 }} />
-        </label>
         <label className={styles.searchLabel}>
           차종
           <SelectDropdown options={vehicleCodes.map(c => ({ value: c.value, label: c.value }))} value={search.vehicleCode} onChange={(v) => setSearch(s => ({ ...s, vehicleCode: v }))} placeholder="전체" style={{ minWidth: 100 }} />
@@ -232,22 +257,21 @@ function MasterSemiProduct() {
         <div className={styles.tableWrap}>
           <table className={styles.masterTable}>
             <colgroup>
-              <col style={{ width: '8%' }} />
               <col style={{ width: '10%' }} />
               {!isMobile && <>
+                <col style={{ width: '14%' }} />
                 <col style={{ width: '12%' }} />
-                <col style={{ width: '10%' }} />
-                <col style={{ width: '10%' }} />
-                <col style={{ width: '6%' }} />
-                <col style={{ width: '6%' }} />
-                <col style={{ width: '6%' }} />
-                <col style={{ width: '6%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '9%' }} />
               </>}
               <col style={{ width: '9%' }} />
             </colgroup>
             <thead>
               <tr>
-                <th>반제품 종류</th>
                 <th>차종</th>
                 {!isMobile && <>
                   <th>적용부</th>
@@ -264,10 +288,9 @@ function MasterSemiProduct() {
             </thead>
             <tbody>
               {list.length === 0 ? (
-                <tr><td colSpan={isMobile ? 3 : 12} className={styles.empty}>조회된 반제품이 없습니다.</td></tr>
+                <tr><td colSpan={isMobile ? 2 : 11} className={styles.empty}>조회된 반제품이 없습니다.</td></tr>
               ) : list.map(row => (
                 <tr key={row.id} onClick={() => openView(row.id)} style={{ cursor: 'pointer' }}>
-                  <EllipsisCell>{renderCell(row.semi_type)}</EllipsisCell>
                   <EllipsisCell>{renderCell(row.vehicle_code)}</EllipsisCell>
                   {!isMobile && <>
                     <EllipsisCell>{renderCell(row.part_code)}</EllipsisCell>

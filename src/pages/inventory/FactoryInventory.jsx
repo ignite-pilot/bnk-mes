@@ -19,15 +19,14 @@ const API = '/api/daily-inventory';
 const FACTORY_TABS = {
   gj: [
     { key: 'gj_sangji', label: '상지', category: '원자재' },
-    { key: 'gj_surface', label: '표면처리제/접착제', category: '원자재', bulk: true },
     { key: 'gj_foam', label: '폼', category: '원자재' },
     { key: 'gj_primer', label: '프라이머', category: '원자재', bulk: true },
     { key: 'gj_pyoji', label: '표지', category: '반제품' },
     { key: 'gj_foam_primer', label: '폼 프라이머', category: '반제품' },
   ],
   us: [
-    { key: 'us_haji', label: '하지', category: '원자재' },
     { key: 'us_foam_raw', label: '미처리 폼', category: '원자재' },
+    { key: 'us_haji', label: '하지', category: '반제품' },
     { key: 'us_pyoji', label: '표지', category: '반제품' },
     { key: 'us_foam_primer', label: '폼 프라이머', category: '반제품' },
     { key: 'us_finished', label: '완제품', category: '완제품' },

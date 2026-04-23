@@ -235,7 +235,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: '파일이 없습니다.' });
     const uploadedBy = String(req.body.uploadedBy || '').trim() || null;
-    const replaceMode = String(req.body.replace || 'false') === 'true';
 
     const wb = XLSX.read(req.file.buffer, { type: 'buffer' });
 
@@ -315,29 +314,34 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: '저장 가능한 데이터가 없습니다.', skipped: skippedKeys.length });
     }
 
-    if (replaceMode && dateSet.size > 0) {
-      await pool.query(
-        `UPDATE production_emboss SET deleted = 'Y' WHERE deleted = 'N' AND prod_date IN (?)`,
-        [[...dateSet]],
-      );
-    }
-
-    const CHUNK = 1000;
+    // 업로드 시 기존 데이터 전체 하드 삭제 후 재적재
+    const conn = await pool.getConnection();
     let inserted = 0;
-    for (let i = 0; i < allValues.length; i += CHUNK) {
-      const chunk = allValues.slice(i, i + CHUNK);
-      const [r] = await pool.query(
-        `INSERT INTO production_emboss
-         (prod_date, machine_no, bnk_lot, top_lot, cover_lot,
-          vehicle, color, part, spec, sheet_qty,
-          foam_lot, foam_in_qty, emboss_roll, width,
-          emboss_qty, yield_rate, gloss, thickness,
-          double_width, total_qty, roll_qty, count_qty, actual_usage,
-          memo, created_by, updated_by)
-         VALUES ?`,
-        [chunk],
-      );
-      inserted += r.affectedRows;
+    try {
+      await conn.beginTransaction();
+      await conn.query(`DELETE FROM production_emboss`);
+      const CHUNK = 1000;
+      for (let i = 0; i < allValues.length; i += CHUNK) {
+        const chunk = allValues.slice(i, i + CHUNK);
+        const [r] = await conn.query(
+          `INSERT INTO production_emboss
+           (prod_date, machine_no, bnk_lot, top_lot, cover_lot,
+            vehicle, color, part, spec, sheet_qty,
+            foam_lot, foam_in_qty, emboss_roll, width,
+            emboss_qty, yield_rate, gloss, thickness,
+            double_width, total_qty, roll_qty, count_qty, actual_usage,
+            memo, created_by, updated_by)
+           VALUES ?`,
+          [chunk],
+        );
+        inserted += r.affectedRows;
+      }
+      await conn.commit();
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
     }
 
     const { vehicles, colors } = await getMasterMaps();
@@ -359,7 +363,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       skipped: skippedKeys.length,
       skippedSamples: skippedKeys.slice(0, 5),
       dateCount: dateSet.size,
-      replace: replaceMode,
+      replace: 'full',
       mismatch: {
         vehicle: mismatchVehicle,
         vehicleList: [...unmatchedVehicles].slice(0, 20),

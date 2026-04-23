@@ -45,7 +45,6 @@ function SurfaceTreatmentTab({ userName }) {
   const [message, setMessage] = useState('');
   const [newRow, setNewRow] = useState({ ...EMPTY_ROW, prod_date: todayISO() });
   const [uploadResult, setUploadResult] = useState(null);
-  const [replaceMode, setReplaceMode] = useState(false);
   const [onlyMismatch, setOnlyMismatch] = useState(false);
   const fileInputRef = useRef(null);
   const { vehicleCodes, colorCodes } = useConfigCodes();
@@ -112,7 +111,7 @@ function SurfaceTreatmentTab({ userName }) {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('uploadedBy', userName);
-      formData.append('replace', replaceMode ? 'true' : 'false');
+      formData.append('replace', 'true');
       const res = await fetch(`${API}/upload`, { method: 'POST', body: formData });
       const d = await res.json();
       if (!res.ok) { setError(d.error || '업로드 실패'); return; }
@@ -150,10 +149,17 @@ function SurfaceTreatmentTab({ userName }) {
           마스터 미매칭만
         </label>
         <div style={{ flex: 1 }} />
-        <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }}>
-          <input type="checkbox" checked={replaceMode} onChange={(e) => setReplaceMode(e.target.checked)} />
-          같은 날짜 기존 데이터 교체
-        </label>
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+          fontSize: '0.75rem', color: '#78350f',
+          padding: '0.3rem 0.6rem',
+          backgroundColor: '#fef3c7',
+          border: '1px solid #fde68a',
+          borderRadius: '6px',
+        }}>
+          <span aria-hidden>⚠</span>
+          업로드 시 전체 데이터가 삭제되고 새로 적재됩니다.
+        </span>
         <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleUpload} style={{ display: 'none' }} />
         <button type="button" onClick={() => fileInputRef.current?.click()} disabled={loading}
           style={{ padding: '0.45rem 1rem', backgroundColor: '#10b981', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>

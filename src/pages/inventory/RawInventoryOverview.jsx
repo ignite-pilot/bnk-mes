@@ -66,7 +66,7 @@ function RawInventoryOverview() {
   });
 
   // 종류별로 묶어서 행 머지 (상지 | 협성 | 현진 | 경주 | 울산 형식)
-  const kindOrder = ['상지', '하지', '프라이머', '접착제', 'Foam'];
+  const kindOrder = ['상지', '프라이머', 'Foam'];
   const kindOptions = [{ value: '', label: '전체' }, ...kindOrder.map((k) => ({ value: k, label: k }))];
 
   // rowSpan info

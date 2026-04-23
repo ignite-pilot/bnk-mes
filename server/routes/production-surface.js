@@ -217,7 +217,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: '파일이 없습니다.' });
     const uploadedBy = String(req.body.uploadedBy || '').trim() || null;
-    const replaceMode = String(req.body.replace || 'false') === 'true';
 
     const wb = XLSX.read(req.file.buffer, { type: 'buffer' });
     // "표면처리생산실적" 포함된 시트 찾기 (구버전 시트 제외)
@@ -275,28 +274,31 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: '저장 가능한 데이터가 없습니다.', skipped: skippedKeys.length });
     }
 
-    // replace 모드: 해당 날짜들의 기존 데이터를 soft-delete (업로드한 것만 교체)
-    if (replaceMode && dateSet.size > 0) {
-      await pool.query(
-        `UPDATE production_surface SET deleted = 'Y' WHERE deleted = 'N' AND prod_date IN (?)`,
-        [[...dateSet]],
-      );
-    }
-
-    // 벌크 INSERT (대용량 대비 1000건 단위 분할)
-    const CHUNK = 1000;
+    // 업로드 시 기존 데이터 전체 하드 삭제 후 재적재
+    const conn = await pool.getConnection();
     let inserted = 0;
-    for (let i = 0; i < values.length; i += CHUNK) {
-      const chunk = values.slice(i, i + CHUNK);
-      const [r] = await pool.query(
-        `INSERT INTO production_surface
-         (prod_date, supplier, \`div\`, vehicle, color, thickness, width,
-          top_lot, cover_lot, in_qty, out_qty, defect_qty, yield_rate,
-          memo, status, created_by, updated_by)
-         VALUES ?`,
-        [chunk],
-      );
-      inserted += r.affectedRows;
+    try {
+      await conn.beginTransaction();
+      await conn.query(`DELETE FROM production_surface`);
+      const CHUNK = 1000;
+      for (let i = 0; i < values.length; i += CHUNK) {
+        const chunk = values.slice(i, i + CHUNK);
+        const [r] = await conn.query(
+          `INSERT INTO production_surface
+           (prod_date, supplier, \`div\`, vehicle, color, thickness, width,
+            top_lot, cover_lot, in_qty, out_qty, defect_qty, yield_rate,
+            memo, status, created_by, updated_by)
+           VALUES ?`,
+          [chunk],
+        );
+        inserted += r.affectedRows;
+      }
+      await conn.commit();
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
     }
 
     // 마스터 미매칭 집계
@@ -319,7 +321,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       skipped: skippedKeys.length,
       skippedSamples: skippedKeys.slice(0, 5),
       dateCount: dateSet.size,
-      replace: replaceMode,
+      replace: 'full',
       mismatch: {
         vehicle: mismatchVehicle,
         color: mismatchColor,

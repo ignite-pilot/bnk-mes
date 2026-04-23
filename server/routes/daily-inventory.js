@@ -17,14 +17,13 @@ const TABLE = 'daily_inventory';
 const PROCESS_TYPES = {
   // 경주 공장 — 원자재
   gj_sangji:      { label: '상지',            factory: 'gj', category: '원자재', unit: 'M' },
-  gj_surface:     { label: '표면처리제/접착제', factory: 'gj', category: '원자재', unit: 'M' },
   gj_foam:        { label: '폼',              factory: 'gj', category: '원자재', unit: 'M' },
   gj_primer:      { label: '프라이머',         factory: 'gj', category: '원자재', unit: 'M' },
   // 경주 공장 — 반제품
   gj_pyoji:       { label: '표지',            factory: 'gj', category: '반제품', unit: 'M' },
   gj_foam_primer: { label: '폼 프라이머',      factory: 'gj', category: '반제품', unit: 'M' },
   // 울산 공장 — 원자재
-  us_haji:        { label: '하지',            factory: 'us', category: '원자재', unit: 'M' },
+  us_haji:        { label: '하지',            factory: 'us', category: '반제품', unit: 'M' },
   us_foam_raw:    { label: '미처리 폼',        factory: 'us', category: '원자재', unit: 'M' },
   // 울산 공장 — 반제품
   us_pyoji:       { label: '표지',            factory: 'us', category: '반제품', unit: 'M' },

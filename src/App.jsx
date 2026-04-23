@@ -16,6 +16,8 @@ import SemiInventoryOverview from './pages/inventory/SemiInventoryOverview';
 import RawInventoryOverview from './pages/inventory/RawInventoryOverview';
 import FinishedProductStock from './pages/inventory/FinishedProductStock';
 import SemiProductStock from './pages/inventory/SemiProductStock';
+import IntegratedInventory from './pages/inventory/IntegratedInventory';
+import TpoDetail from './pages/production/TpoDetail';
 import MaterialInbound from './pages/material/MaterialInbound';
 import DeliveryFinishedProduct from './pages/delivery/DeliveryFinishedProduct';
 import DeliverySemiProduct from './pages/delivery/DeliverySemiProduct';
@@ -46,6 +48,7 @@ function App() {
       p.path !== '/inventory/raw' &&
       p.path !== '/inventory/finished-stock' &&
       p.path !== '/inventory/semi-stock' &&
+      p.path !== '/inventory/integrated' &&
       p.path !== '/delivery/vehicle' &&
       p.path !== '/delivery/product' &&
       p.path !== '/delivery/semi' &&
@@ -57,7 +60,8 @@ function App() {
       p.path !== '/master/finished-product' &&
       p.path !== '/master/semi-product' &&
       p.path !== '/production/plan-3m' &&
-      p.path !== '/production/daily'
+      p.path !== '/production/daily' &&
+      p.path !== '/production/tpo-detail'
   );
 
   return (
@@ -76,6 +80,7 @@ function App() {
           <Route path="inventory/raw" element={<RawInventoryOverview />} />
           <Route path="inventory/finished-stock" element={<FinishedProductStock />} />
           <Route path="inventory/semi-stock" element={<SemiProductStock />} />
+          <Route path="inventory/integrated" element={<IntegratedInventory />} />
           <Route path="material/inbound" element={<MaterialInbound />} />
           <Route path="delivery/product" element={<DeliveryFinishedProduct />} />
           <Route path="delivery/semi" element={<DeliverySemiProduct />} />
@@ -88,6 +93,7 @@ function App() {
           <Route path="master/semi-product" element={<MasterSemiProduct />} />
           <Route path="production/plan-3m" element={<ProductionPlan3M />} />
           <Route path="production/daily" element={<ProductionDaily />} />
+          <Route path="production/tpo-detail" element={<TpoDetail />} />
           {allPaths.map(({ path, title }) => (
             <Route
               key={path}

@@ -116,7 +116,7 @@ function InventoryOverview() {
     { key: 'memo', label: '비고' },
   ];
 
-  // 경주 공장 컬럼 (접착제/프라이머는 상단 카드로 표시)
+  // 경주 공장 컬럼 (프라이머는 상단 카드로 표시)
   const gjColumns = [
     { key: 'qty_gj_sangji', label: '상지' },
     { key: 'qty_gj_foam', label: '폼' },
@@ -188,10 +188,6 @@ function InventoryOverview() {
       <div className="bulk-section" style={{ flexShrink: 0 }}>
         <div className="bulk-divider"><span>경주 원자재 총량</span></div>
         <div className="bulk-summary">
-          <div className="bulk-summary-card">
-            <span className="bulk-summary-label">표면처리제/접착제</span>
-            <span className="bulk-summary-qty">{Number(bulk.gj_surface?.qty || 0).toLocaleString()}<span className="bulk-summary-unit">M</span></span>
-          </div>
           <div className="bulk-summary-card">
             <span className="bulk-summary-label">프라이머</span>
             <span className="bulk-summary-qty">{Number(bulk.gj_primer?.qty || 0).toLocaleString()}<span className="bulk-summary-unit">M</span></span>

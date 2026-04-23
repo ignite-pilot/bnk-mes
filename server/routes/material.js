@@ -38,7 +38,7 @@ router.get('/template', async (req, res) => {
     const { vehicleMap, partMap, colorMap } = await getAllCodeMaps();
 
     const wb = XLSX.utils.book_new();
-    const templateData = [['원자재 종류(상지/표지/하지/폼/프라이머)','자재코드','원자재 이름','차종코드','차종명','적용부코드','적용부명','색상코드','색상','두께(mm)','폭(mm)','길이(mm)','원자재 업체 안전재고 수량','비엔케이 창고 안전재고 수량']];
+    const templateData = [['원자재 종류(상지/폼/프라이머)','자재코드','원자재 이름','차종코드','차종명','적용부코드','적용부명','색상코드','색상','두께(mm)','폭(mm)','길이(mm)','원자재 업체 안전재고 수량','비엔케이 창고 안전재고 수량']];
     const ws1 = XLSX.utils.aoa_to_sheet(templateData);
     ws1['!cols'] = templateData[0].map(() => ({ wch: 14 }));
     ws1['!cols'][0] = { wch: 30 };
